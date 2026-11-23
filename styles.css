@@ -287,7 +287,6 @@ main {
 .ready:empty { display: none; }
 .plan-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px;
   background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
-#raceDate { margin: 0; }
 
 /* ---------- v1.3：安裝引導（大字、一步一行） ---------- */
 .ig { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .45);
@@ -320,3 +319,15 @@ main {
 .ig-arrow.menu { left: calc(29% - 28px); }   /* Safari 26 網址列左邊的選單按鈕 */
 @keyframes ig-bob { 50% { translate: 0 10px; } }
 @media (prefers-reduced-motion: reduce) { .ig-arrow { animation: none; } }
+
+/* ---------- v1.4：比賽日期欄位（iPhone Safari 的日期欄位有自己的外觀與最小寬度，會超出卡片、空白時高度塌掉） ---------- */
+.date-row { display: flex; align-items: center; gap: 10px; }
+#raceDate {
+  -webkit-appearance: none; appearance: none;
+  display: block; flex: 1; width: 100%; min-width: 0; max-width: 100%;
+  height: 44px; margin: 0; padding: 0 12px; line-height: 44px; text-align: left;
+}
+#raceDate::-webkit-date-and-time-value { text-align: left; margin: 0; }
+#raceDate::-webkit-datetime-edit { padding: 0; line-height: 44px; }
+#raceClear { flex: none; padding: 6px 4px; }
+#raceClear[hidden] { display: none; }

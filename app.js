@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.3';
+const VERSION = '1.4';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -949,6 +949,7 @@ $('#daysSeg').innerHTML = [2, 3, 4, 5, 6].map((d) => `<button data-d="${d}">${d}
 function renderSettings() {
   if (document.activeElement !== $('#pullGoalInput')) $('#pullGoalInput').value = data.pullGoal || 20;
   $('#raceDate').value = data.raceDate || '';
+  $('#raceClear').hidden = !data.raceDate;
   const rd = data.raceDate ? Math.round((parseKey(data.raceDate) - parseKey(todayKey())) / 864e5) : null;
   $('#raceHint').textContent = rd == null ? '設定後，賽前 3 週會自動減量，賽後 1 週安排恢復'
     : rd > 0 ? `距離比賽還有 ${rd} 天${rd <= 21 ? '，已進入賽前減量' : ''}` : rd === 0 ? '今天比賽，加油！' : '比賽已結束；有下一場時再設定新日期';
@@ -967,6 +968,12 @@ $('#raceDate').addEventListener('change', () => {
   persist();
   renderSettings();
   toast(data.raceDate ? '已設定比賽日期' : '已清除比賽日期');
+});
+$('#raceClear').addEventListener('click', () => {
+  data.raceDate = '';
+  persist();
+  renderSettings();
+  toast('已清除比賽日期');
 });
 $('#pullGoalInput').addEventListener('change', () => {
   const v = Math.round(+$('#pullGoalInput').value);
