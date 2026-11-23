@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.2';
+const VERSION = '1.3';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -1068,7 +1068,65 @@ document.addEventListener('visibilitychange', () => {
   if (t !== lastToday) { if (curDate === lastToday) curDate = t; lastToday = t; renderAll(); }
 });
 
+/* ================= 安裝引導 ================= */
+// iPhone 不允許網頁自己加入主畫面，只能把步驟放在畫面上教；預覽用：網址加 ?guide=safari／safari26／line／chrome
+const SHARE_SVG = '<svg viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/></svg>';
+const MENU_SVG = '<svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg>';
+const APP_URL = 'https://roychensc.github.io/Fitness/';
+
+function initInstallGuide() {
+  const ua = navigator.userAgent;
+  const params = new URLSearchParams(location.search);
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  const ios = /iPhone|iPod/.test(ua);
+  const isLine = /\bLine\//.test(ua);
+  const inApp = isLine || /FBAN|FBAV|Instagram|MicroMessenger/.test(ua);
+  const ver = Number((ua.match(/Version\/(\d+)/) || [])[1]) || 0;
+  let mode = params.get('guide');
+  if (!mode) {
+    if (standalone || !ios) return;
+    let later = false;
+    try { later = sessionStorage.getItem('workout-guide-later') === '1'; } catch (e) { /* 略過 */ }
+    if (later) return;
+    mode = inApp ? 'line' : /CriOS|EdgiOS|FxiOS/.test(ua) ? 'chrome' : ver >= 26 ? 'safari26' : 'safari';
+  }
+
+  // LINE：自動改用 Safari 開（LINE 看到 openExternalBrowser=1 會用外部瀏覽器），只試一次避免一直重新整理
+  if (mode === 'line' && isLine && !params.has('openExternalBrowser')) {
+    let tried = false;
+    try { tried = sessionStorage.getItem('workout-ext-tried') === '1'; sessionStorage.setItem('workout-ext-tried', '1'); } catch (e) { tried = true; }
+    if (!tried) { location.replace(APP_URL + '?openExternalBrowser=1'); return; }
+  }
+
+  const STEPS = {
+    line: ['點畫面<b>右上角或右下角的「⋯」</b>', '選<b>「用 Safari 開啟」</b>或<b>「以瀏覽器開啟」</b>', '打開後，照畫面的說明加到桌面'],
+    // Chrome／Edge／Firefox（iOS 16.4 起也能加入主畫面）
+    chrome: [`點網址旁邊的${SHARE_SVG}<b>「分享」</b>`, '往上滑，點<b>「加入主畫面」</b>', '點右上角<b>「新增」</b>或<b>「加入」</b>'],
+    safari: [`點最下面中間的${SHARE_SVG}<b>「分享」</b>`, '往上滑，點<b>「加入主畫面」</b>', '點右上角<b>「新增」</b>'],
+    // Safari 26：網址列左邊的「☰」是選單（有些設定是右下角的「⋯」）
+    safari26: [`點下面網址<b>左邊的${MENU_SVG}</b><small>沒有的話，點右下角「⋯」</small>`, `點${SHARE_SVG}<b>「分享」</b>`, '往上滑，點<b>「加入主畫面」</b>', '點右上角<b>「新增」</b>或<b>「加入」</b>'],
+  };
+  if (!STEPS[mode]) return;
+  const notSafari = mode === 'line' || mode === 'chrome';
+  $('#igTitle').innerHTML = notSafari ? '請改用 Safari 打開' : '把運動日記<br>放到手機桌面';
+  $('#igSteps').innerHTML = STEPS[mode].map((t) => `<li><span>${t}</span></li>`).join('');
+  $('#igSafari').hidden = !notSafari;
+  $('#igLead').hidden = !notSafari;
+  const arrow = $('#igArrow');
+  arrow.setAttribute('class', 'ig-arrow ' + (mode === 'safari' ? 'center' : 'menu'));   // SVG 不能用 className
+  arrow.toggleAttribute('hidden', notSafari);   // LINE、Chrome 的按鈕位置不固定，不畫箭頭
+  $('#installGuide').hidden = false;
+
+  $('#igLater').addEventListener('click', () => {
+    $('#installGuide').hidden = true;
+    try { sessionStorage.setItem('workout-guide-later', '1'); } catch (e) { /* 略過 */ }
+  });
+}
+
 renderToday();
+initInstallGuide();
+// 請瀏覽器盡量不要自動清除本機資料
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

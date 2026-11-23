@@ -288,3 +288,35 @@ main {
 .plan-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px;
   background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
 #raceDate { margin: 0; }
+
+/* ---------- v1.3：安裝引導（大字、一步一行） ---------- */
+.ig { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .45);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px 16px calc(env(safe-area-inset-bottom) + 70px); }
+.ig[hidden] { display: none; }
+.ig-card { width: 100%; max-width: 420px; background: var(--bg); color: var(--text);
+  border-radius: 24px; padding: 22px 20px 14px; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
+.ig-icon { width: 64px; height: 64px; border-radius: 15px; }
+.ig-title { font-size: 25px; line-height: 1.35; margin: 8px 0 14px; }
+.ig-steps { list-style: none; padding: 0; margin: 0; text-align: left; counter-reset: ig; }
+.ig-steps li { counter-increment: ig; display: flex; align-items: center; gap: 12px;
+  font-size: 21px; line-height: 1.4; padding: 10px 0; border-top: 1px solid var(--line); }
+.ig-steps li::before { content: counter(ig); flex: none; width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 19px; }
+.ig-steps b { color: var(--accent); }
+.ig-steps small { display: block; font-size: 16px; color: var(--muted); }
+.ig-steps svg { width: 26px; height: 26px; vertical-align: -5px; stroke: var(--accent); fill: none;
+  stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ig-safari { display: block; padding: 15px; margin-bottom: 14px; border-radius: 16px; font-size: 22px; font-weight: 800;
+  background: var(--accent); color: #fff; text-decoration: none; }
+.ig-lead { font-size: 17px; color: var(--muted); text-align: left; margin-bottom: 4px; }
+.ig-safari[hidden], .ig-lead[hidden] { display: none; }
+.ig-later { margin-top: 8px; padding: 10px; font-size: 16px; color: var(--muted); }
+.ig-arrow { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 4px); width: 56px; height: 56px; z-index: 51;
+  fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .6)); animation: ig-bob 1s ease-in-out infinite; }
+.ig-arrow[hidden] { display: none; }
+.ig-arrow.center { left: calc(50% - 28px); }
+.ig-arrow.menu { left: calc(29% - 28px); }   /* Safari 26 網址列左邊的選單按鈕 */
+@keyframes ig-bob { 50% { translate: 0 10px; } }
+@media (prefers-reduced-motion: reduce) { .ig-arrow { animation: none; } }
