@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.4';
+const VERSION = '1.5';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -64,15 +64,26 @@ const GOALS = {
   muscle: { name: '增肌', cardio: 90, strength: 4, flex: 2, streak: 4, desc: '每週 3–4 次肌力，同一部位間隔 48 小時；有氧少量即可' },
   endurance: { name: '耐力', cardio: 240, strength: 2, flex: 2, streak: 5, desc: '以有氧為主，逐步拉長時間，每週穿插一次較吃力的訓練' },
 };
-// 建議卡片上顯示的動作內容（依網路資料整理，見「指南」頁）
+// 重訓動作庫：sets 組數、reps 次數、rest 組間休息、load 是否記重量（0 = 徒手）
+// 組間休息：大重量複合動作 2–3 分、其他複合 90–120 秒、單關節 60–90 秒、腹肌 45–60 秒
+// （Singer 2024 統合分析：超過 60 秒較有利增肌，90 秒以上差異不大；大重量需要較長休息）
+const X = (n, sets, reps, rest, load = true) => ({ n, sets, reps, rest, load });
+const EX = {
+  push: [X('臥推', 4, '6–10', '2–3 分'), X('上斜 30° 啞鈴臥推', 3, '8–12', '90–120 秒'), X('坐姿啞鈴肩推', 3, '8–12', '90–120 秒'),
+    X('側平舉', 4, '12–20', '60–90 秒'), X('繩索飛鳥', 3, '12–15', '60–90 秒'), X('三頭下壓', 2, '10–15', '60–90 秒')],
+  pull: [X('滑輪下拉', 4, '6–12', '2 分'), X('單臂啞鈴划船', 3, '8–12', '90–120 秒'), X('臉拉', 3, '12–20', '60–90 秒'),
+    X('側平舉', 3, '12–20', '60–90 秒'), X('啞鈴彎舉', 2, '10–15', '60–90 秒')],
+  lower: [X('深蹲', 4, '4–6', '3 分'), X('羅馬尼亞硬舉', 3, '6–8', '2–3 分'), X('保加利亞分腿蹲', 3, '8–10', '90–120 秒'), X('站姿提踵', 3, '12–15', '60 秒')],
+  core: [X('懸吊抬腿', 3, '10–15', '45–60 秒'), X('健腹輪', 3, '8–12', '60 秒', false), X('負重繩索捲腹', 3, '10–15', '45–60 秒')],
+  upper: [X('臥推', 3, '6–10', '2–3 分'), X('槓鈴划船', 3, '8–12', '90–120 秒'), X('坐姿啞鈴肩推', 3, '8–12', '90–120 秒'), X('側平舉', 3, '12–20', '60–90 秒')],
+  full: [X('深蹲', 3, '5–8', '2–3 分'), X('臥推', 3, '6–10', '2–3 分'), X('槓鈴划船', 3, '8–12', '90–120 秒'), X('側平舉', 3, '12–20', '60–90 秒')],
+};
+// 第一次做某個動作時的起始重量（kg，之後自動帶入上次）；0 = 徒手
+const W0 = { 臥推: 40, '上斜 30° 啞鈴臥推': 14, 坐姿啞鈴肩推: 12, 側平舉: 6, 繩索飛鳥: 10, 三頭下壓: 20, 滑輪下拉: 40, 單臂啞鈴划船: 20,
+  臉拉: 15, 啞鈴彎舉: 10, 深蹲: 50, 羅馬尼亞硬舉: 50, 保加利亞分腿蹲: 10, 站姿提踵: 40, 負重繩索捲腹: 30, 槓鈴划船: 40, 負重引體向上: 5 };
+const exFor = (type) => (EX[type] || []).map((o) => ({ ...o }));
+// 有氧與伸展的說明文字
 const DETAIL = {
-  push: ['槓鈴或啞鈴臥推 4×6–10', '上斜 30° 啞鈴臥推 3×8–12（上胸）', '坐姿啞鈴肩推 3×8–12', '側平舉 4×12–20（肩寬關鍵）', '繩索或器械飛鳥 3×12–15', '三頭下壓 2×10–15'],
-  pullup: ['引體向上：依最大次數安排組數'],
-  pull: ['引體向上或滑輪下拉 4×6–12', '單臂啞鈴划船 3×8–12', '臉拉 3×12–20（後三角）', '側平舉 3×12–20', '啞鈴彎舉 2×10–15'],
-  lower: ['深蹲 4×4–6（大重量，約 80–85% 1RM）', '羅馬尼亞硬舉 3×6–8', '保加利亞分腿蹲 3×8（每腳）', '站姿提踵 3×12–15'],
-  core: ['懸吊抬腿 3×10–15', '健腹輪 3×8–12', '負重繩索捲腹 3×10–15', '能輕鬆做完就加重量或次數'],
-  upper: ['臥推 3×6–10', '划船 3×8–12', '肩推 3×8–12', '側平舉 3×12–20'],
-  full: ['深蹲 3×5–8', '臥推 3×6–10', '划船 3×8–12', '側平舉 3×12–20'],
   easy_run: ['能講完整句子的配速（約最大心率 65–75%）', '寧可太慢，不要太快'],
   run: ['能講完整句子的配速（約最大心率 65–75%）'],
   tempo: ['暖身慢跑 15 分', '節奏跑 20–25 分（稍吃力，約半馬配速）或 6×800 公尺間歇', '緩和慢跑 10 分'],
@@ -108,6 +119,11 @@ function cleanEntry(e) {
       .map((s) => {
         const x = { id: String(s.id || uid()), type: s.type, min: Math.min(600, Math.round(s.min)), rpe: [1, 2, 3].includes(s.rpe) ? s.rpe : 2, note: String(s.note || '').slice(0, 60) };
         if (s.km > 0 && s.km <= 300) x.km = Math.round(s.km * 100) / 100;
+        if (Array.isArray(s.ex)) {
+          x.ex = s.ex.filter((o) => o && o.n).slice(0, 20).map((o) => ({ n: String(o.n).slice(0, 30), sets: Math.min(20, Math.max(1, Math.round(o.sets) || 1)),
+            reps: String(o.reps || '').slice(0, 20), rest: String(o.rest || '').slice(0, 20), load: !!o.load,
+            w: Math.min(500, Math.max(0, +o.w || 0)), r: Math.min(200, Math.max(0, Math.round(o.r) || 0)), done: Math.min(20, Math.max(0, Math.round(o.done) || 0)) }));
+        }
         return x;
       }),
     sore: normParts(Array.isArray(e.sore) ? e.sore : []),
@@ -350,18 +366,18 @@ function bestPull() {
   return Object.values(data.entries).reduce((m, e) => (e.pullMax != null && e.pullMax > m ? e.pullMax : m), -1);
 }
 // 依目前最大次數 M 排引體向上課表：多組、不力竭的次最大量累積總次數；做不到 1 下先練離心；十幾下以後加負重
-function pullupPlan(M, test, onPullDay) {
+function pullupEx(M, test, onPullDay) {
   const goal = data.pullGoal || 20;
   const L = [];
-  if (test) L.push('先測驗：充分暖身後做 1 組標準引體向上到力竭（手臂伸直、下巴過槓），記在「今天」頁');
-  if (M == null) { L.push('測完後，課表會依你的次數調整'); return L; }
-  if (M === 0) L.push('離心引體 5×3（跳上槓，每下用 5 秒慢慢放下）', '懸吊 3×20–30 秒（握力與肩胛穩定）', '彈力帶輔助 2×6–8（只當補充）');
-  else if (M < 5) L.push(`引體向上 8 組 × ${Math.max(1, Math.ceil(M / 2))} 下（休息 90 秒，不要力竭）`, '離心引體 3×3（每下 5 秒放下）');
-  else if (M < 12) L.push(`引體向上 6 組 × ${Math.round(M * .6)} 下（休息 90–120 秒，不要力竭）`, '最後一組做到「再 1 下就做不動」就停');
+  if (test) L.push(X('引體向上測驗', 1, '到力竭', '3 分', false));
+  if (M == null) return L.length ? L : [X('引體向上', 4, '能做幾下做幾下', '2 分', false)];
+  if (M === 0) L.push(X('離心引體（5 秒放下）', 5, '3', '90 秒', false), X('懸吊', 3, '20–30 秒', '60 秒', false), X('彈力帶輔助引體', 2, '6–8', '90 秒', false));
+  else if (M < 5) L.push(X('引體向上', 8, String(Math.max(1, Math.ceil(M / 2))), '90 秒', false), X('離心引體（5 秒放下）', 3, '3', '90 秒', false));
+  else if (M < 12) L.push(X('引體向上', 6, String(Math.round(M * .6)), '90–120 秒', false));
   else if (M < goal) {
-    if (onPullDay) L.push('負重引體向上 4×5（腰掛 5–10 kg，動作標準為準）', `再做 2 組 × ${Math.round(M * .6)} 下（徒手）`);
-    else L.push(`高次數日：5 組 × ${Math.round(M * .7)} 下（休息 90 秒）`, '最後一組做到「再 1 下就做不動」就停');
-  } else L.push('已達目標！維持：負重引體向上 4×5＋每 2 週測一次最大次數');
+    if (onPullDay) L.push(X('負重引體向上', 4, '5', '2–3 分'), X('引體向上', 2, String(Math.round(M * .6)), '2 分', false));
+    else L.push(X('引體向上', 5, String(Math.round(M * .7)), '90 秒', false));
+  } else L.push(X('負重引體向上', 4, '5', '2–3 分'));
   return L;
 }
 
@@ -462,10 +478,10 @@ function recommendHybrid(target, s, flexItem, r) {
   const pullItem = items.find((i) => i.type === 'pull');
   let pullupAdded = false;
   if (pullItem) {
-    pullItem.det = [...pullupPlan(M, testDue, true), ...DETAIL.pull.slice(1)];
+    pullItem.ex = [...pullupEx(M, testDue, true), ...exFor('pull').slice(1)];
     pullupAdded = true;
   } else if ((M == null || M < goal) && run !== 'long' && cnt('pullup') < W.pullup && free(['back']) && since('pullup', 2)) {
-    items.push({ type: 'pullup', min: 15, rpe: lighter ? 2 : 3, det: pullupPlan(M, testDue, false) });
+    items.push({ type: 'pullup', min: 15, rpe: lighter ? 2 : 3, ex: pullupEx(M, testDue, false) });
     pullupAdded = true;
   }
   if (pullupAdded) {
@@ -493,13 +509,15 @@ function recommendHybrid(target, s, flexItem, r) {
     why.push('今天項目已經夠多，腹肌移到之後');
   }
   // 依狀態調整重訓內容
-  const prefix = taper ? '賽前減量：每個動作組數減半、不做到力竭' : s.deload ? '減量週：每個動作組數減半、重量不變、不做到力竭'
-    : easyDay ? '狀態普通：每個動作少 1–2 組（約 -30%），重量不變' : r.great ? '狀態很好：主項可以多 1 組或加一點重量（漸進超負荷）' : '';
-  const scale = s.deload || taper ? .6 : easyDay ? .75 : 1;
+  // 依狀態調整重訓：組數直接改好（減量週／賽前減半、狀態普通每個動作少 1 組）
+  const note = taper ? '賽前減量：組數已減半，不做到力竭' : s.deload ? '減量週：組數已減半，重量不變' : easyDay ? '狀態普通：每個動作已少 1 組，重量不變'
+    : r.great ? '狀態很好：主項可以加一點重量' : '';
+  const half = s.deload || taper;
   items.forEach((i) => {
     if (TYPE[i.type].cat !== 'strength') return;
-    if (prefix) i.det = [prefix, ...(i.det || DETAIL[i.type] || [])];
-    if (scale < 1) i.min = round5(i.min * scale);
+    i.ex = (i.ex || exFor(i.type)).map((o) => (o.reps === '到力竭' ? o : { ...o, sets: half ? Math.ceil(o.sets / 2) : easyDay ? Math.max(1, o.sets - 1) : o.sets }));
+    if (note) i.note = note;
+    if (half || easyDay) i.min = round5(i.min * (half ? .6 : .75));
   });
 
   if (!items.length) {
@@ -571,16 +589,25 @@ function recommendGeneral(s, g, fav, flexItem, r) {
   return { kind: 'train', badge: TYPE[items[0].type].emoji, title: titles.join(' ＋ '), items, reasons: why };
 }
 
+// 動作表格：名稱｜組數×次數｜組間休息
+function exTable(ex) {
+  return `<div class="ext">${ex.map((o) => `<span class="n">${esc(o.n)}</span><span class="sr">${o.sets}×${esc(o.reps)}</span><span class="rt">⏱ ${esc(o.rest)}</span>`).join('')}</div>`;
+}
 // full：明天建議卡片顯示動作內容
 function planItemsHtml(p, full) {
   return p.items.map((i) => {
     const t = TYPE[i.type];
-    const det = full ? [...(i.det || DETAIL[i.type] || [])] : [];
-    if (full && i.km) det.unshift(`目標約 ${i.km} km`);
-    return `<div class="plan-item${det.length ? ' has-det' : ''}"><span class="em">${t.emoji}</span>
+    let body = '';
+    if (full) {
+      const ex = t.cat === 'strength' ? (i.ex || exFor(i.type)) : null;
+      const det = ex ? [] : [...(i.det || DETAIL[i.type] || [])];
+      if (i.km) det.unshift(`目標約 ${i.km} km`);
+      body = (i.note ? `<div class="pnote">${esc(i.note)}</div>` : '') + (ex && ex.length ? exTable(ex) : '')
+        + (det.length ? `<ul class="det">${det.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>` : '');
+    }
+    return `<div class="plan-item${body ? ' has-det' : ''}"><span class="em">${t.emoji}</span>
       <span class="name">${t.name}<small>${CATS[t.cat]} · ${RPE[i.rpe - 1].label}</small></span>
-      <span class="min">${i.min} 分</span>
-      ${det.length ? `<ul class="det">${det.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}</div>`;
+      <span class="min">${i.min} 分</span>${body ? `<div class="pbody">${body}</div>` : ''}</div>`;
   }).join('');
 }
 
@@ -625,13 +652,13 @@ function renderToday() {
   const sore = new Set(e && e.sore ? e.sore : []);
   $$('#sore .chip').forEach((b) => b.classList.toggle('on', sore.has(b.dataset.p)));
   $$('#sleep .chip').forEach((b) => b.classList.toggle('on', !!e && e.sleep === +b.dataset.h));
-  if (document.activeElement !== $('#rhr')) $('#rhr').value = e && e.rhr ? e.rhr : '';
+  $('#rhrVal').textContent = e && e.rhr ? e.rhr : '未填';
   // 準備度：今天的狀態會用來排明天
   const rs = recentStats(addDays(curDate, 1));
   const rv = readiness(rs);
   const lvl = rs.feel === 1 || rs.feel === 2 || rv.lv === 2 ? 2 : rv.lv;
-  const RL = [['良好', 'var(--c-flex)', '明天照計畫訓練'], ['普通', 'var(--f4)', '明天會自動減量'], ['偏低', 'var(--c-cardio)', '明天安排恢復']];
-  $('#ready').innerHTML = `<span class="tag" style="--c:${RL[lvl][1]}">${rv.great ? '很好' : RL[lvl][0]}</span> ${rv.great ? '明天可以挑戰多一點' : RL[lvl][2]}`;
+  const RL = [['良好', 'var(--c-flex)', '明天照計畫'], ['普通', 'var(--f4)', '明天減量'], ['偏低', 'var(--c-cardio)', '明天恢復']];
+  $('#ready').innerHTML = `<span class="tag" style="--c:${RL[lvl][1]}">${rv.great ? '很好' : RL[lvl][0]} · ${rv.great ? '明天可加量' : RL[lvl][2]}</span>`;
 
   const ss = sessionsOf(curDate);
   $('#sessions').innerHTML = ss.length ? ss.map((s) => {
@@ -639,7 +666,7 @@ function renderToday() {
     return `<button class="sess" data-id="${s.id}" style="--c:${catColor(t.cat)}">
       <span class="em">${t.emoji}</span>
       <span class="body"><span class="name">${t.name}</span>
-        <span class="meta">${s.km ? `${s.km} km · ${pace(s)}` : CATS[t.cat]} · ${RPE[s.rpe - 1].label}${s.note ? ' · ' + esc(s.note) : ''}</span></span>
+        <span class="meta">${s.km ? `${s.km} km · ${pace(s)}` : s.ex && s.ex.length ? exSummary(s.ex) : CATS[t.cat]} · ${RPE[s.rpe - 1].label}${s.note ? ' · ' + esc(s.note) : ''}</span></span>
       <span class="min">${s.min}<small>分</small></span></button>`;
   }).join('') : `<div class="empty">${isToday ? '今天還沒有運動紀錄' : '這天沒有運動紀錄'}</div>`;
 
@@ -661,7 +688,7 @@ function renderToday() {
       <div><div class="k">${next === addDays(todayKey(), 1) ? '明天' : next === todayKey() ? '今天' : shortDate(next) + ' '}建議${p.tag ? ` <span class="plan-tag">${esc(p.tag)}</span>` : ''}</div>
       <div class="t">${esc(p.title)}</div></div></div>
     <div class="plan-items">${planItemsHtml(p, true)}</div>
-    <ul class="plan-why">${p.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>`;
+    <details class="plan-why-d"><summary>為什麼這樣排</summary><ul class="plan-why">${p.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></details>`;
 
   $('#saveStatus').textContent = e ? `已儲存 · ${fmtTime(e.t)}` : '運動完記下來，建議會自動更新';
   $('#deleteEntry').hidden = !e;
@@ -673,8 +700,7 @@ function renderToday() {
 function renderPullCard(e) {
   const goal = data.pullGoal || 20;
   const best = bestPull();
-  const inp = $('#pullMax');
-  if (document.activeElement !== inp) inp.value = e && e.pullMax != null ? e.pullMax : '';
+  $('#pullVal').textContent = e && e.pullMax != null ? e.pullMax : '未填';
   $('#pullGoalLbl').textContent = goal;
   $('#pullBest').textContent = best >= 0 ? `${best} 下` : '尚未測驗';
   $('#pullBar').style.width = `${Math.min(100, Math.max(0, best) / goal * 100)}%`;
@@ -684,19 +710,24 @@ function renderPullCard(e) {
     : pt == null ? '充分暖身後，標準動作（手臂伸直、下巴過槓）做 1 組到力竭，記下次數'
     : days >= 14 ? `上次測驗是 ${days} 天前，該再測一次了` : `上次測驗：${shortDate(pt.k)}，${pt.v} 下；建議每 2 週測一次`;
 }
-$('#pullMax').addEventListener('change', () => {
-  const raw = $('#pullMax').value.trim();
-  const v = Math.round(+raw);
-  if (raw === '') {
-    const e = data.entries[curDate];
-    if (e) delete e.pullMax;
-  } else if (v >= 0 && v <= 100) {
-    const prev = bestPull();
-    ensureEntry().pullMax = v;
-    if (v > prev && prev >= 0) toast(`新紀錄！${v} 下 💪`);
-  } else { toast('請輸入 0–100'); return; }
-  touch();
-});
+// ＋／－ 調整數值：第一次按從上一次的值開始，長按不用
+function stepper(sel, get, set, start, lo, hi) {
+  $(sel).addEventListener('click', (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    const cur = get();
+    if (b.dataset.a === 'x') set(null);
+    else set(cur == null ? start() : Math.min(hi, Math.max(lo, cur + (b.dataset.a === '+' ? 1 : -1))));
+    touch();
+  });
+}
+stepper('#pullStp', () => { const e = data.entries[curDate]; return e && e.pullMax != null ? e.pullMax : null; }, (v) => {
+  const e = ensureEntry();
+  if (v == null) { delete e.pullMax; return; }
+  const prev = Math.max(-1, ...Object.entries(data.entries).filter(([k]) => k !== curDate).map(([, x]) => (x.pullMax != null ? x.pullMax : -1)));
+  e.pullMax = v;
+  if (v > prev && prev >= 0) toast(`新紀錄！${v} 下 💪`);
+}, () => { const pt = lastPullTest(curDate); return pt ? pt.v : 0; }, 0, 100);
 
 $('#feels').addEventListener('click', (ev) => {
   const b = ev.target.closest('.feel');
@@ -714,15 +745,10 @@ $('#sleep').addEventListener('click', (ev) => {
   if (e.sleep === +b.dataset.h) delete e.sleep; else e.sleep = +b.dataset.h;
   touch();
 });
-$('#rhr').addEventListener('change', () => {
-  const raw = $('#rhr').value.trim();
-  const v = Math.round(+raw);
+stepper('#rhrStp', () => { const e = data.entries[curDate]; return e && e.rhr ? e.rhr : null; }, (v) => {
   const e = ensureEntry();
-  if (raw === '') delete e.rhr;
-  else if (v >= 30 && v <= 120) e.rhr = v;
-  else { toast('請輸入 30–120'); return; }
-  touch();
-});
+  if (v == null) delete e.rhr; else e.rhr = v;
+}, () => { const k = Object.keys(data.entries).filter((x) => x < curDate && data.entries[x].rhr).sort().pop(); return k ? data.entries[k].rhr : 60; }, 30, 120);
 $('#sore').addEventListener('click', (ev) => {
   const b = ev.target.closest('.chip');
   if (!b) return;
@@ -743,7 +769,11 @@ $('#todayPlan').addEventListener('click', (ev) => {
   if (!ev.target.closest('#usePlan')) return;
   const p = recommend(curDate);
   const e = ensureEntry();
-  p.items.forEach((i) => e.sessions.push({ id: uid(), type: i.type, min: i.min, rpe: i.rpe, note: '', ...(i.km ? { km: i.km } : {}) }));
+  p.items.forEach((i) => {
+    const s = { id: uid(), type: i.type, min: i.min, rpe: i.rpe, note: '', ...(i.km ? { km: i.km } : {}) };
+    if (TYPE[i.type].cat === 'strength') s.ex = fillEx(i.ex || exFor(i.type)).map((o) => ({ ...o, done: o.sets }));
+    e.sessions.push(s);
+  });
   touch();
   toast(`已記錄 ${p.items.length} 項運動，可點一下修改`);
 });
@@ -763,10 +793,47 @@ $('#typeGrid').innerHTML = TYPES.map((t) =>
 $('#minQuick').innerHTML = [10, 20, 30, 45, 60].map((m) => `<button class="chip" data-m="${m}">${m}</button>`).join('');
 $('#rpeSeg').innerHTML = RPE.map((r) => `<button data-v="${r.v}">${r.label}</button>`).join('');
 
+// 上一次做這個動作的重量與次數（自動帶入，不用手打）
+function lastEx(n) {
+  const keys = Object.keys(data.entries).filter((k) => k <= curDate).sort().reverse();
+  for (const k of keys) {
+    for (const s of sessionsOf(k)) {
+      const o = (s.ex || []).find((x) => x.n === n && x.done > 0);
+      if (o && !(k === curDate && editing && s.id === editing.id)) return o;
+    }
+  }
+  return null;
+}
+const wStep = (w) => (w >= 20 ? 2.5 : 1);
+const hiRep = (reps) => { const m = String(reps).match(/(\d+)\D*$/); return m ? +m[1] : 0; };
+// 帶入上次的重量與次數；上次每組都完成、次數達到上限 → 自動加重（漸進超負荷）
+function fillEx(list) {
+  return list.map((o) => {
+    const l = lastEx(o.n);
+    const x = { ...o, w: l ? l.w || 0 : (o.load ? W0[o.n] || 0 : 0), r: l ? l.r : parseInt(o.reps, 10) || 0, done: 0 };
+    if (o.reps === '到力竭') { const pt = lastPullTest(addDays(curDate, 1)); x.r = pt ? pt.v : 0; }
+    if (l && o.load && l.w > 0 && l.done >= l.sets && l.r >= hiRep(o.reps)) { x.w = l.w + wStep(l.w); x.r = parseInt(o.reps, 10) || x.r; x.up = true; }
+    return x;
+  });
+}
+function exSummary(ex) {
+  const done = ex.reduce((a, o) => a + Math.min(o.done || 0, o.sets), 0);
+  const tot = ex.reduce((a, o) => a + o.sets, 0);
+  const top = ex.find((o) => o.load && o.w > 0);
+  return `${done}/${tot} 組${top ? ` · ${top.n} ${top.w}kg×${top.r}` : ''}`;
+}
+// 這天的建議裡如果有同一種重訓，用它的動作（含引體向上程度、減量後的組數）
+function planEx(type) {
+  const p = recommend(curDate);
+  const it = p.items.find((i) => i.type === type);
+  return it ? { ex: it.ex || exFor(type), min: it.min } : { ex: exFor(type), min: null };
+}
+
 function openSheet(s) {
   // 新增時預設用最常做的項目
   const last = Object.keys(data.entries).sort().reverse().map(mainSession).find(Boolean);
-  editing = s || { type: last ? last.type : 'walk', min: last ? last.min : 30, rpe: 2, note: '' };
+  editing = s ? JSON.parse(JSON.stringify(s)) : { type: last ? last.type : 'walk', min: last ? last.min : 30, rpe: 2, note: '' };
+  if (!s) prepEx(true);
   $('#sheetTitle').textContent = s ? '編輯運動' : '新增運動';
   $('#sheetDelete').hidden = !s;
   $('#sMin').value = editing.min || '';
@@ -775,14 +842,47 @@ function openSheet(s) {
   renderSheet();
   $('#sheet').hidden = false;
 }
+// 選了重訓項目時準備動作清單
+function prepEx(setMin) {
+  if (TYPE[editing.type].cat !== 'strength') { delete editing.ex; return; }
+  const pe = planEx(editing.type);
+  editing.ex = fillEx(pe.ex);
+  if (setMin) { editing.min = pe.min || 45; $('#sMin').value = editing.min; }
+}
+function renderEx() {
+  const ex = editing.ex || [];
+  $('#exBox').hidden = !ex.length;
+  $('#exList').innerHTML = ex.map((o, i) => `<div class="exr" data-i="${i}">
+    <div class="exr-top"><b>${esc(o.n)}</b>${o.up ? '<span class="up">⬆ 加重</span>' : ''}<span class="rt">${o.sets}×${esc(o.reps)} · ⏱ ${esc(o.rest)}</span></div>
+    <div class="exr-ctl">
+      ${o.load ? `<span class="stp"><button data-a="w-">−</button><b>${o.w ? o.w + ' kg' : '徒手'}</b><button data-a="w+">＋</button></span>` : ''}
+      <span class="stp"><button data-a="r-">−</button><b>${o.r} ${/秒/.test(o.reps) ? '秒' : '下'}</b><button data-a="r+">＋</button></span>
+      <span class="sets">${Array.from({ length: o.sets }, (_, k) => `<button class="set${k < (o.done || 0) ? ' on' : ''}" data-s="${k}">${k + 1}</button>`).join('')}</span>
+    </div></div>`).join('');
+}
 function renderSheet() {
+  renderEx();
   $$('#typeGrid .type').forEach((b) => b.classList.toggle('on', b.dataset.t === editing.type));
   $$('#rpeSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.v === editing.rpe));
   $('#rpeHint').textContent = RPE[editing.rpe - 1].hint;
   $('#kmRow').hidden = !TYPE[editing.type].run;
 }
 const closeSheet = () => { $('#sheet').hidden = true; editing = null; };
-$('#typeGrid').addEventListener('click', (ev) => { const b = ev.target.closest('.type'); if (b) { editing.type = b.dataset.t; renderSheet(); } });
+$('#typeGrid').addEventListener('click', (ev) => { const b = ev.target.closest('.type'); if (b && b.dataset.t !== editing.type) { editing.type = b.dataset.t; prepEx(true); renderSheet(); } });
+$('#exList').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button');
+  const row = ev.target.closest('.exr');
+  if (!b || !row) return;
+  const o = editing.ex[+row.dataset.i];
+  const a = b.dataset.a;
+  if (a === 'w+') o.w = Math.round((o.w + wStep(o.w)) * 10) / 10;
+  else if (a === 'w-') o.w = Math.max(0, Math.round((o.w - wStep(o.w - 0.01)) * 10) / 10);
+  else if (a === 'r+') o.r = Math.min(200, o.r + 1);
+  else if (a === 'r-') o.r = Math.max(0, o.r - 1);
+  else if (b.dataset.s != null) { const k = +b.dataset.s; o.done = (o.done || 0) === k + 1 ? k : k + 1; }   // 點第幾組＝完成到第幾組；再點一次取消
+  if (a === 'w+' || a === 'w-') delete o.up;
+  renderEx();
+});
 $('#rpeSeg').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) { editing.rpe = +b.dataset.v; renderSheet(); } });
 $('#minQuick').addEventListener('click', (ev) => { const b = ev.target.closest('.chip'); if (b) $('#sMin').value = b.dataset.m; });
 $('#sheetCancel').addEventListener('click', closeSheet);
@@ -794,6 +894,12 @@ $('#sheetSave').addEventListener('click', () => {
   const s = { id: editing.id || uid(), type: editing.type, min, rpe: editing.rpe, note: $('#sNote').value.trim().slice(0, 60) };
   const km = Math.round(+$('#sKm').value * 100) / 100;
   if (TYPE[s.type].run && km > 0 && km <= 300) s.km = km;
+  if (editing.ex && editing.ex.length) {
+    s.ex = editing.ex.map(({ up, ...o }) => o);
+    // 引體向上測驗做完 → 自動記成這天的最大次數
+    const t = s.ex.find((o) => o.reps === '到力竭' && o.done > 0);
+    if (t) { e.pullMax = t.r; }
+  }
   const i = e.sessions.findIndex((x) => x.id === s.id);
   if (i >= 0) e.sessions[i] = s; else e.sessions.push(s);
   closeSheet();

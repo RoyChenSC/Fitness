@@ -44,18 +44,13 @@
     <div class="card plan-mini" id="todayPlan" hidden></div>
 
     <div class="card">
-      <div class="card-title">身體狀況</div>
+      <div class="card-title">身體狀況 <span class="ready" id="ready"></span></div>
       <div class="feels" id="feels"></div>
-      <div class="card-title sub-title">痠痛部位</div>
-      <div class="chips" id="sore"></div>
-      <div class="card-title sub-title">昨晚睡了幾小時</div>
-      <div class="chips" id="sleep"></div>
-      <div class="ex-row rhr-row">
-        <span class="ex-unit">早上安靜心跳</span>
-        <input class="field ex-input" id="rhr" type="number" inputmode="numeric" min="30" max="120" placeholder="—">
-        <span class="ex-unit">下／分（選填）</span>
-      </div>
-      <div class="ready" id="ready"></div>
+      <div class="kv"><span class="k">痠痛</span><div class="chips sm" id="sore"></div></div>
+      <div class="kv"><span class="k">睡眠</span><div class="chips sm" id="sleep"></div></div>
+      <div class="kv"><span class="k">安靜心跳</span>
+        <span class="stp" id="rhrStp"><button data-a="-" aria-label="減少">−</button><b id="rhrVal">未填</b><button data-a="+" aria-label="增加">＋</button></span>
+        <span class="unit">下／分 · 選填</span></div>
     </div>
 
     <div class="card">
@@ -67,11 +62,9 @@
     <div class="card">
       <div class="card-title">引體向上 <span class="pull-best">最佳 <b id="pullBest"></b>／目標 <span id="pullGoalLbl"></span> 下</span></div>
       <div class="bar pull-bar"><i id="pullBar" style="--c:var(--c-strength)"></i></div>
-      <div class="ex-row pull-row">
-        <span class="ex-unit">測驗：最多一次</span>
-        <input class="field ex-input" id="pullMax" type="number" inputmode="numeric" min="0" max="100" placeholder="—">
-        <span class="ex-unit">下</span>
-      </div>
+      <div class="kv"><span class="k">今天測驗</span>
+        <span class="stp" id="pullStp"><button data-a="-" aria-label="減少">−</button><b id="pullVal">未填</b><button data-a="+" aria-label="增加">＋</button></span>
+        <span class="unit">下</span></div>
       <div class="hint" id="pullHint"></div>
     </div>
 
@@ -141,8 +134,8 @@
     <h2 class="page-title">訓練指南</h2>
     <p class="note-text">依研究與專業資料整理，針對「健身＋跑馬拉松」、目標大胸肌、寬肩、腹肌、引體向上 20 下，無氧肌力與有氧都要練到。明天建議就是照這些原則排的。</p>
 
-    <div class="card">
-      <h3>🧭 人生目標：終身訓練</h3>
+    <details class="card g" open>
+      <summary><h3>🧭 人生目標：終身訓練</h3></summary>
       <ul>
         <li><b>肌力和心肺都要有</b>：大型研究發現，心肺耐力和肌力都高的人，全死因死亡風險約只有兩者都低者的一半，兩者兼顧最有效</li>
         <li>最大攝氧量（心肺耐力）每提升 1 MET，死亡風險約降低 11–17%；強度課會輪流安排<b>節奏跑和 4×4 分鐘間歇</b></li>
@@ -158,10 +151,10 @@
         <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10948666">減量週調查（每 4–6 週）</a>、
         <a href="https://www.frontiersin.org/articles/10.3389/fspor.2022.1073223">減量實務建議</a>、
         <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9584849/">Craven 2022 睡眠不足與表現</a></div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h3>📈 今天的狀態怎麼影響明天</h3>
+    <details class="card g">
+      <summary><h3>📈 今天的狀態怎麼影響明天</h3></summary>
       <ul>
         <li><b>良好</b>：照計畫；精神很好、睡 7 小時以上、沒痠痛 → 主項可多 1 組或加重</li>
         <li><b>普通</b>（睡 6 小時以下、心跳比平常高 7 下以上、多處痠痛、這週常覺得累）→ 重訓少 1–2 組、強度跑改輕鬆跑、長跑不加長、不做測驗</li>
@@ -172,10 +165,10 @@
       <div class="src">來源：
         <a href="https://pubmed.ncbi.nlm.nih.gov/36472094/">睡眠不足與耐力表現統合分析</a>、
         <a href="https://pubmed.ncbi.nlm.nih.gov/34489178/">依心率變異度調整訓練的統合分析</a>（安靜心跳是簡化的參考指標，證據有限）</div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h3>🗓️ 一週範例（6 天）</h3>
+    <details class="card g">
+      <summary><h3>🗓️ 一週範例（6 天）</h3></summary>
       <div class="week-tpl">
         <b>一</b><span>胸＋肩 ＋ 腹肌</span>
         <b>二</b><span>節奏跑或 4×4 間歇（強度課，每週輪替）</span>
@@ -186,26 +179,29 @@
         <b>日</b><span>休息或散步＋伸展</span>
       </div>
       <div class="hint">實際建議會依你的紀錄、痠痛與疲勞即時調整，不一定照這個順序。</div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h3>🦾 大胸肌、寬肩</h3>
+    <details class="card g">
+      <summary><h3>🦾 大胸肌、寬肩</h3></summary>
       <ul>
         <li>每個肌群每週約 <b>10–20 組</b>，分 <b>2 次</b>練，效果比 1 次好</li>
         <li>上胸：上斜約 <b>30°</b> 最好；超過 45° 會變成主要練到前肩</li>
         <li>肩膀看起來寬，主要靠<b>側三角肌</b> → 側平舉每週約 12–20 組（胸肩日、背日都做）</li>
         <li>背與後三角（划船、臉拉）讓肩膀更有寬度，也能避免圓肩</li>
         <li>每組做到剩 1–3 下就做不動（記為「吃力」），並逐週加重量或次數</li>
+        <li><b>組間休息</b>：大重量複合動作（臥推、深蹲）2–3 分、其他複合動作 90–120 秒、單關節動作（側平舉、飛鳥）60–90 秒、腹肌 45–60 秒；休息超過 60 秒較有利增肌</li>
+        <li>重訓紀錄會自動帶入上次的重量與次數；上次每組都做完且次數達上限，下次自動加重</li>
       </ul>
       <div class="src">來源：
         <a href="https://pubmed.ncbi.nlm.nih.gov/27433992/">Schoenfeld 2017 訓練量統合分析</a>、
         <a href="https://jhk.termedia.pl/A-Systematic-Review-of-the-Effects-of-Different-Resistance-Training-Volumes-on-Muscle,158681,0,2.html">Baz-Valle 2022（每週 12–20 組）</a>、
         <a href="https://pubmed.ncbi.nlm.nih.gov/33049982/">上斜角度與胸肌活化</a>、
-        <a href="https://barbend.com/news/scientifically-best-shoulder-exercise/">側三角訓練</a></div>
-    </div>
+        <a href="https://barbend.com/news/scientifically-best-shoulder-exercise/">側三角訓練</a>、
+        <a href="https://pubmed.ncbi.nlm.nih.gov/39205815/">Singer 2024 組間休息統合分析</a></div>
+    </details>
 
-    <div class="card">
-      <h3>🙌 引體向上 20 下</h3>
+    <details class="card g">
+      <summary><h3>🙌 引體向上 20 下</h3></summary>
       <ul>
         <li>每週練 <b>3 次</b>（背日 2 次＋1 次專項），間隔 48 小時</li>
         <li>主要靠<b>多組、不力竭</b>累積總次數：每組約最大次數的 50–70%，休息 90–120 秒</li>
@@ -219,10 +215,10 @@
         <a href="https://breakingmuscle.com/beginner-pull-up-series-negatives-and-increasing-the-loading/">離心與負重進程</a>、
         <a href="https://www.boxrox.com/?p=242147">彈力帶、離心、器械比較</a>、
         <a href="https://bullbarfit.com/blogs/q-as/what-is-the-grease-the-groove-method-and-how-does-it-apply-to-pull-ups">Grease the groove</a></div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h3>🧱 冰塊腹肌</h3>
+    <details class="card g">
+      <summary><h3>🧱 冰塊腹肌</h3></summary>
       <ul>
         <li>腹肌要像其他肌肉一樣<b>負重、漸進</b>：懸吊抬腿、健腹輪、繩索捲腹</li>
         <li>每週約 <b>3 次</b>，間隔 48 小時</li>
@@ -233,10 +229,10 @@
         <a href="https://pubmed.ncbi.nlm.nih.gov/28698222/">Morton 2018 蛋白質統合分析</a>、
         <a href="https://inbodyusa.com/blogs/inbodyblog/what-body-fat-percentage-do-you-need-to-see-abs/">看見腹肌的體脂</a>、
         <a href="https://pubmed.ncbi.nlm.nih.gov/16558218/">腹肌動作肌電圖研究</a></div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h3>🏃 馬拉松</h3>
+    <details class="card g">
+      <summary><h3>🏃 馬拉松</h3></summary>
       <ul>
         <li><b>80/20 原則</b>：約 80% 跑量是輕鬆配速（能講完整句子），20% 是節奏跑或間歇</li>
         <li>跑量主要靠<b>增加輕鬆跑</b>來累積</li>
@@ -247,10 +243,10 @@
         <a href="https://runnersconnect.net/sub-3-marathon-training/">11.9 萬名跑者訓練資料分析</a>、
         <a href="https://www.trainingpeaks.com/blog/marathon-training-plan/">TrainingPeaks 馬拉松課表</a>、
         <a href="https://www.asics.com/it/en-it/running-advice/why-tapering-is-important-before-race-day/">ASICS 賽前減量</a></div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h3>⚖️ 重訓和跑步怎麼搭</h3>
+    <details class="card g">
+      <summary><h3>⚖️ 重訓和跑步怎麼搭</h3></summary>
       <ul>
         <li>大部分研究顯示，同時練有氧<b>不太影響增肌</b>；干擾主要在爆發力，以及跑量很大時</li>
         <li>跑者每週 <b>2–3 次</b>重訓（含大重量 ≥80% 1RM）能改善跑步經濟性</li>
@@ -262,7 +258,7 @@
         <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9474354">2022 肌纖維層級統合分析</a>、
         <a href="https://link.springer.com/article/10.1007/s40279-023-01978-y">2024 重訓與跑步經濟性回顧</a>、
         <a href="https://runnersworldonline.com.au/should-you-be-running-before-or-after-a-strength-workout/">Doma：重訓與跑步間隔</a></div>
-    </div>
+    </details>
     <p class="note-text">以上為一般性原則，不是醫療建議。有傷痛或身體不適請先休息、就醫。</p>
   </section>
 
@@ -374,10 +370,14 @@
       <input class="field ex-input" id="sKm" type="number" inputmode="decimal" min="0" max="300" step="0.1" placeholder="0">
       <span class="ex-unit">公里（選填，會算配速與每週跑量）</span>
     </div>
+    <div id="exBox" hidden>
+      <div class="card-title">動作 <span class="ex-tip">點組數打勾 · 重量與次數自動帶入上次</span></div>
+      <div id="exList"></div>
+    </div>
     <div class="card-title">強度</div>
     <div class="seg" id="rpeSeg"></div>
     <div class="hint" id="rpeHint"></div>
-    <input class="field" id="sNote" maxlength="60" placeholder="備註（選填）：距離、重量、組數…">
+    <input class="field" id="sNote" maxlength="60" placeholder="備註（選填）">
     <button class="text-btn danger" id="sheetDelete" hidden>刪除這項運動</button>
   </div>
 </div>

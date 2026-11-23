@@ -331,3 +331,51 @@ main {
 #raceDate::-webkit-datetime-edit { padding: 0; line-height: 44px; }
 #raceClear { flex: none; padding: 6px 4px; }
 #raceClear[hidden] { display: none; }
+
+/* ---------- v1.5：精簡版面、動作清單、＋／－ ---------- */
+.card-title .ready { float: right; letter-spacing: 0; margin: -2px 0 0; padding: 0; border: 0; font-size: 12px; }
+.kv { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.kv .k { flex: none; width: 56px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.kv .unit { font-size: 12px; color: var(--muted); }
+.chips.sm { gap: 6px; }
+.chips.sm .chip { padding: 5px 11px; font-size: 13px; }
+.stp { display: inline-flex; align-items: center; background: var(--surface-2); border-radius: 999px; }
+.stp button { width: 34px; height: 32px; font-size: 18px; color: var(--accent); }
+.stp button:active { transform: scale(.9); }
+.stp b { min-width: 44px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+.pull-row, .rhr-row { display: none; }
+/* 建議卡片 */
+.plan-item .pbody { flex-basis: 100%; margin-top: 6px; padding-top: 8px; border-top: .5px solid var(--line); }
+.pnote { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 6px; }
+.ext { display: grid; grid-template-columns: 1fr auto auto; gap: 5px 10px; font-size: 13px; align-items: baseline; }
+.ext .n { color: var(--text); }
+.ext .sr { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ext .rt, .exr .rt { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.plan-item .det { margin: 0; padding: 0 0 0 16px; border: 0; }
+.plan-why-d { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.plan-why-d summary { cursor: pointer; padding: 4px 2px; font-weight: 600; color: var(--accent); list-style: none; }
+.plan-why-d summary::-webkit-details-marker { display: none; }
+.plan-why-d summary::after { content: ' ▾'; }
+.plan-why-d[open] summary::after { content: ' ▴'; }
+.plan-why-d .plan-why { margin-top: 4px; }
+/* 新增面板：動作清單 */
+.ex-tip { font-weight: 400; margin-left: 6px; font-size: 11px; }
+.exr { background: var(--surface); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; box-shadow: inset 0 0 0 1px var(--line); }
+.exr-top { display: flex; align-items: baseline; gap: 8px; }
+.exr-top b { font-size: 15px; }
+.exr-top .rt { margin-left: auto; }
+.exr .up { font-size: 11px; font-weight: 700; color: var(--c-flex); }
+.exr-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.exr .stp b { min-width: 58px; }
+.sets { display: flex; gap: 5px; margin-left: auto; }
+.set { width: 30px; height: 30px; border-radius: 50%; font-size: 12px; font-weight: 700; color: var(--muted);
+  box-shadow: inset 0 0 0 1.5px var(--line); }
+.set.on { background: var(--c-strength); color: #fff; box-shadow: none; }
+/* 指南：可收合 */
+details.card.g { padding: 14px 16px; }
+details.card.g > summary { list-style: none; cursor: pointer; }
+details.card.g > summary::-webkit-details-marker { display: none; }
+details.card.g > summary h3 { margin: 0; }
+details.card.g > summary h3::after { content: '▾'; margin-left: auto; font-size: 13px; color: var(--muted); }
+details.card.g[open] > summary h3::after { content: '▴'; }
+details.card.g[open] > summary { margin-bottom: 10px; }
