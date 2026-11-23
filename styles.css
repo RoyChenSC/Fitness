@@ -201,7 +201,7 @@ main {
 .chart rect { stroke: none; }
 .chart .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; }
 .chart .axis { fill: var(--muted); stroke: none; font-size: 10px; }
-.goal-row { display: grid; grid-template-columns: 56px 1fr 84px; align-items: center; gap: 10px; margin: 10px 0; font-size: 14px; }
+.goal-row { display: grid; grid-template-columns: 58px 1fr 70px; align-items: center; gap: 10px; margin: 10px 0; font-size: 14px; }
 .goal-row .cnt { text-align: right; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .bar { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: inherit; background: var(--c); transition: width .5s ease; }
@@ -257,3 +257,19 @@ main {
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 @media (prefers-reduced-motion: reduce) { .view.active, .sheet { animation: none; } }
+
+/* ---------- v1.1：動作內容、公里數、指南 ---------- */
+.plan-item.has-det { flex-wrap: wrap; }
+.plan-item .det { flex-basis: 100%; margin: 6px 0 2px; padding: 8px 0 0 16px; border-top: .5px solid var(--line); font-size: 13px; color: var(--muted); line-height: 1.75; }
+.km-row { margin-top: 12px; }
+.km-row[hidden] { display: none; }
+.km-row .ex-input { width: 96px; }
+#goalSeg { margin-bottom: 0; }
+.goal-row b, .hint b { color: var(--text); }
+.guide h3 { font-size: 17px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.guide ul { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8; }
+.guide li b { color: var(--accent); }
+.guide .src { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+.guide .src a { color: var(--accent); word-break: break-all; }
+.week-tpl { display: grid; grid-template-columns: 34px 1fr; gap: 6px 10px; font-size: 14px; }
+.week-tpl b { color: var(--accent); }
