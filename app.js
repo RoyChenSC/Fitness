@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.5';
+const VERSION = '1.5.1';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -119,6 +119,7 @@ function cleanEntry(e) {
       .map((s) => {
         const x = { id: String(s.id || uid()), type: s.type, min: Math.min(600, Math.round(s.min)), rpe: [1, 2, 3].includes(s.rpe) ? s.rpe : 2, note: String(s.note || '').slice(0, 60) };
         if (s.km > 0 && s.km <= 300) x.km = Math.round(s.km * 100) / 100;
+        if (s.light) x.light = true;
         if (Array.isArray(s.ex)) {
           x.ex = s.ex.filter((o) => o && o.n).slice(0, 20).map((o) => ({ n: String(o.n).slice(0, 30), sets: Math.min(20, Math.max(1, Math.round(o.sets) || 1)),
             reps: String(o.reps || '').slice(0, 20), rest: String(o.rest || '').slice(0, 20), load: !!o.load,
@@ -771,7 +772,10 @@ $('#todayPlan').addEventListener('click', (ev) => {
   const e = ensureEntry();
   p.items.forEach((i) => {
     const s = { id: uid(), type: i.type, min: i.min, rpe: i.rpe, note: '', ...(i.km ? { km: i.km } : {}) };
-    if (TYPE[i.type].cat === 'strength') s.ex = fillEx(i.ex || exFor(i.type)).map((o) => ({ ...o, done: o.sets }));
+    if (TYPE[i.type].cat === 'strength') {
+      s.ex = fillEx(i.ex || exFor(i.type)).map((o) => ({ ...o, done: o.sets }));
+      if (/減量/.test(p.tag || '')) s.light = true;
+    }
     e.sessions.push(s);
   });
   touch();
@@ -799,7 +803,7 @@ function lastEx(n) {
   for (const k of keys) {
     for (const s of sessionsOf(k)) {
       const o = (s.ex || []).find((x) => x.n === n && x.done > 0);
-      if (o && !(k === curDate && editing && s.id === editing.id)) return o;
+      if (o && !(k === curDate && editing && s.id === editing.id)) return { ...o, light: !!s.light };
     }
   }
   return null;
@@ -812,7 +816,8 @@ function fillEx(list) {
     const l = lastEx(o.n);
     const x = { ...o, w: l ? l.w || 0 : (o.load ? W0[o.n] || 0 : 0), r: l ? l.r : parseInt(o.reps, 10) || 0, done: 0 };
     if (o.reps === '到力竭') { const pt = lastPullTest(addDays(curDate, 1)); x.r = pt ? pt.v : 0; }
-    if (l && o.load && l.w > 0 && l.done >= l.sets && l.r >= hiRep(o.reps)) { x.w = l.w + wStep(l.w); x.r = parseInt(o.reps, 10) || x.r; x.up = true; }
+    // 減量週、賽前減量、狀態普通時組數較少，做完也不算達標
+    if (l && !l.light && o.load && l.w > 0 && l.done >= l.sets && l.r >= hiRep(o.reps)) { x.w = l.w + wStep(l.w); x.r = parseInt(o.reps, 10) || x.r; x.up = true; }
     return x;
   });
 }
@@ -896,6 +901,7 @@ $('#sheetSave').addEventListener('click', () => {
   if (TYPE[s.type].run && km > 0 && km <= 300) s.km = km;
   if (editing.ex && editing.ex.length) {
     s.ex = editing.ex.map(({ up, ...o }) => o);
+    if (/減量/.test(recommend(curDate).tag || '')) s.light = true;
     // 引體向上測驗做完 → 自動記成這天的最大次數
     const t = s.ex.find((o) => o.reps === '到力竭' && o.done > 0);
     if (t) { e.pullMax = t.r; }

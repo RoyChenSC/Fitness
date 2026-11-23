@@ -379,3 +379,16 @@ details.card.g > summary h3 { margin: 0; }
 details.card.g > summary h3::after { content: '▾'; margin-left: auto; font-size: 13px; color: var(--muted); }
 details.card.g[open] > summary h3::after { content: '▴'; }
 details.card.g[open] > summary { margin-bottom: 10px; }
+
+/* ---------- v1.5.1：小螢幕（iPhone SE 等 360px 以下） ---------- */
+@media (max-width: 360px) {
+  .kv { gap: 8px; }
+  .kv .k { width: 48px; font-size: 12px; }
+  .chips.sm { gap: 4px; }
+  .chips.sm .chip { padding: 4px 8px; font-size: 12px; }
+  .kv .unit .opt { display: none; }
+  .stp button { width: 30px; }
+  .stp b { min-width: 40px; }
+  .exr .stp b { min-width: 52px; }
+  .plan-mini .txt b { font-size: 14px; }
+}
