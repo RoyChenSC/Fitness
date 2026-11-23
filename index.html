@@ -48,12 +48,31 @@
       <div class="feels" id="feels"></div>
       <div class="card-title sub-title">痠痛部位</div>
       <div class="chips" id="sore"></div>
+      <div class="card-title sub-title">昨晚睡了幾小時</div>
+      <div class="chips" id="sleep"></div>
+      <div class="ex-row rhr-row">
+        <span class="ex-unit">早上安靜心跳</span>
+        <input class="field ex-input" id="rhr" type="number" inputmode="numeric" min="30" max="120" placeholder="—">
+        <span class="ex-unit">下／分（選填）</span>
+      </div>
+      <div class="ready" id="ready"></div>
     </div>
 
     <div class="card">
       <div class="card-title" id="sessTitle">今天做了什麼</div>
       <div id="sessions"></div>
       <button class="add-btn" id="addSession">＋ 新增運動</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">引體向上 <span class="pull-best">最佳 <b id="pullBest"></b>／目標 <span id="pullGoalLbl"></span> 下</span></div>
+      <div class="bar pull-bar"><i id="pullBar" style="--c:var(--c-strength)"></i></div>
+      <div class="ex-row pull-row">
+        <span class="ex-unit">測驗：最多一次</span>
+        <input class="field ex-input" id="pullMax" type="number" inputmode="numeric" min="0" max="100" placeholder="—">
+        <span class="ex-unit">下</span>
+      </div>
+      <div class="hint" id="pullHint"></div>
     </div>
 
     <!-- 明天建議（依目前所有紀錄即時計算） -->
@@ -108,6 +127,10 @@
       <div id="recovery"></div>
     </div>
     <div class="card">
+      <div class="card-title">引體向上測驗</div>
+      <div id="pullStats"></div>
+    </div>
+    <div class="card">
       <div class="card-title">運動項目</div>
       <div id="typeStats"></div>
     </div>
@@ -116,16 +139,49 @@
   <!-- 指南：依網路資料整理的訓練原則（建議引擎的依據） -->
   <section id="view-guide" class="view guide">
     <h2 class="page-title">訓練指南</h2>
-    <p class="note-text">依研究與專業資料整理，針對「健身＋跑馬拉松」、目標大胸肌、寬肩、腹肌，同時兼顧有氧。明天建議就是照這些原則排的。</p>
+    <p class="note-text">依研究與專業資料整理，針對「健身＋跑馬拉松」、目標大胸肌、寬肩、腹肌、引體向上 20 下，無氧肌力與有氧都要練到。明天建議就是照這些原則排的。</p>
+
+    <div class="card">
+      <h3>🧭 人生目標：終身訓練</h3>
+      <ul>
+        <li><b>肌力和心肺都要有</b>：大型研究發現，心肺耐力和肌力都高的人，全死因死亡風險約只有兩者都低者的一半，兩者兼顧最有效</li>
+        <li>最大攝氧量（心肺耐力）每提升 1 MET，死亡風險約降低 11–17%；強度課會輪流安排<b>節奏跑和 4×4 分鐘間歇</b></li>
+        <li><b>持續 &gt; 完美</b>：不受傷、能一直練下去，比任何一次練很猛都重要</li>
+        <li><b>每 4 週 1 週減量</b>：量減半、頻率不變，讓身體吸收訓練（App 會自動安排）</li>
+        <li><b>睡 7–9 小時</b>：睡 6 小時以下，肌力與耐力表現都會下降；記錄睡眠後，App 會自動減量</li>
+        <li><b>漸進超負荷</b>：狀態好時多 1 組或加一點重量；狀態差時減量，長期仍往上走</li>
+        <li>馬拉松有比賽時，設定日期：賽前 3 週自動減量、賽後 1 週恢復</li>
+      </ul>
+      <div class="src">來源：
+        <a href="https://link.springer.com/article/10.1007/s10654-018-0384-x">UK Biobank：心肺耐力＋握力與死亡率</a>、
+        <a href="https://keyserfaty.github.io/aging-synthesis/interventions/zone2-vo2max.html">最大攝氧量與死亡率整理</a>、
+        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10948666">減量週調查（每 4–6 週）</a>、
+        <a href="https://www.frontiersin.org/articles/10.3389/fspor.2022.1073223">減量實務建議</a>、
+        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9584849/">Craven 2022 睡眠不足與表現</a></div>
+    </div>
+
+    <div class="card">
+      <h3>📈 今天的狀態怎麼影響明天</h3>
+      <ul>
+        <li><b>良好</b>：照計畫；精神很好、睡 7 小時以上、沒痠痛 → 主項可多 1 組或加重</li>
+        <li><b>普通</b>（睡 6 小時以下、心跳比平常高 7 下以上、多處痠痛、這週常覺得累）→ 重訓少 1–2 組、強度跑改輕鬆跑、長跑不加長、不做測驗</li>
+        <li><b>偏低</b>（很累、睡不到 5 小時、心跳比平常高 10 下以上）→ 恢復日：散步＋伸展</li>
+        <li>不舒服 → 休息；痠痛的部位一定避開</li>
+        <li>早上記錄睡眠和心跳後，「今天的建議」也會即時更新</li>
+      </ul>
+      <div class="src">來源：
+        <a href="https://pubmed.ncbi.nlm.nih.gov/36472094/">睡眠不足與耐力表現統合分析</a>、
+        <a href="https://pubmed.ncbi.nlm.nih.gov/34489178/">依心率變異度調整訓練的統合分析</a>（安靜心跳是簡化的參考指標，證據有限）</div>
+    </div>
 
     <div class="card">
       <h3>🗓️ 一週範例（6 天）</h3>
       <div class="week-tpl">
         <b>一</b><span>胸＋肩 ＋ 腹肌</span>
-        <b>二</b><span>節奏／間歇跑（強度課）</span>
-        <b>三</b><span>背＋後肩 ＋ 輕鬆跑（間隔 6 小時）</span>
+        <b>二</b><span>節奏跑或 4×4 間歇（強度課，每週輪替）</span>
+        <b>三</b><span>背＋後肩（含引體向上）＋ 輕鬆跑（間隔 6 小時）</span>
         <b>四</b><span>腿部重訓 ＋ 腹肌</span>
-        <b>五</b><span>胸＋肩 ＋ 輕鬆跑</span>
+        <b>五</b><span>胸＋肩 ＋ 引體向上 ＋ 輕鬆跑</span>
         <b>六</b><span>長距離跑</span>
         <b>日</b><span>休息或散步＋伸展</span>
       </div>
@@ -146,6 +202,23 @@
         <a href="https://jhk.termedia.pl/A-Systematic-Review-of-the-Effects-of-Different-Resistance-Training-Volumes-on-Muscle,158681,0,2.html">Baz-Valle 2022（每週 12–20 組）</a>、
         <a href="https://pubmed.ncbi.nlm.nih.gov/33049982/">上斜角度與胸肌活化</a>、
         <a href="https://barbend.com/news/scientifically-best-shoulder-exercise/">側三角訓練</a></div>
+    </div>
+
+    <div class="card">
+      <h3>🙌 引體向上 20 下</h3>
+      <ul>
+        <li>每週練 <b>3 次</b>（背日 2 次＋1 次專項），間隔 48 小時</li>
+        <li>主要靠<b>多組、不力竭</b>累積總次數：每組約最大次數的 50–70%，休息 90–120 秒</li>
+        <li>一下都拉不起來：先練<b>離心引體</b>（跳上槓，5 秒慢慢放下），比彈力帶輔助更有效</li>
+        <li>能拉 12 下以上：加入<b>負重引體向上</b> 4×5，練出力量餘裕，次數會更快上去</li>
+        <li><b>每 2 週測一次</b>最大次數（標準動作：手臂伸直、下巴過槓），課表會自動調整</li>
+        <li>想再加速：可用「分散練習」（grease the groove），一天中分幾次做約最大次數 40–50% 的組，每組間隔 1 小時以上、絕不力竭</li>
+      </ul>
+      <div class="src">來源：
+        <a href="https://www.marines.mil/Portals/1/Docs/PullupTrainingGuide.pdf">美國海軍陸戰隊引體向上訓練指南</a>、
+        <a href="https://breakingmuscle.com/beginner-pull-up-series-negatives-and-increasing-the-loading/">離心與負重進程</a>、
+        <a href="https://www.boxrox.com/?p=242147">彈力帶、離心、器械比較</a>、
+        <a href="https://bullbarfit.com/blogs/q-as/what-is-the-grease-the-groove-method-and-how-does-it-apply-to-pull-ups">Grease the groove</a></div>
     </div>
 
     <div class="card">
@@ -206,6 +279,22 @@
     <div class="list pad">
       <div class="seg" id="daysSeg"></div>
       <div class="hint">達到天數後，建議會偏向休息或輕鬆恢復</div>
+    </div>
+
+    <div class="list-title">馬拉松比賽日期</div>
+    <div class="list pad">
+      <input class="field" id="raceDate" type="date">
+      <div class="hint" id="raceHint"></div>
+    </div>
+
+    <div class="list-title">引體向上目標</div>
+    <div class="list pad">
+      <div class="ex-row">
+        <span class="ex-unit">一次拉</span>
+        <input class="field ex-input" id="pullGoalInput" type="number" inputmode="numeric" min="1" max="100">
+        <span class="ex-unit">下</span>
+      </div>
+      <div class="hint">課表會依你最近一次測驗的次數安排；建議每 2 週測一次</div>
     </div>
 
     <div class="list-title">資料</div>

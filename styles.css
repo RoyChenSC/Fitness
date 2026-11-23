@@ -273,3 +273,18 @@ main {
 .guide .src a { color: var(--accent); word-break: break-all; }
 .week-tpl { display: grid; grid-template-columns: 34px 1fr; gap: 6px 10px; font-size: 14px; }
 .week-tpl b { color: var(--accent); }
+
+/* ---------- v1.2：引體向上 ---------- */
+.pull-best { float: right; font-weight: 500; letter-spacing: 0; }
+.pull-best b { color: var(--text); }
+.pull-bar { margin: 2px 0 12px; }
+.pull-row .ex-input { width: 72px; }
+
+/* ---------- v1.2：準備度、比賽 ---------- */
+.rhr-row { margin-top: 14px; }
+.rhr-row .ex-input { width: 72px; }
+.ready { margin-top: 14px; padding-top: 12px; border-top: .5px solid var(--line); font-size: 13px; color: var(--muted); }
+.ready:empty { display: none; }
+.plan-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+#raceDate { margin: 0; }
