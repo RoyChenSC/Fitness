@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>運動日記</title>
+<meta name="description" content="記錄每天的運動，並建議明天做什麼">
+<meta name="theme-color" content="#E9F6F0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="運動">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="bgfx" aria-hidden="true"></div>
+<main>
+  <!-- 今天 -->
+  <section id="view-today" class="view active">
+    <header class="day-head">
+      <button class="icon-btn" id="prevDay" aria-label="前一天">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="day-title">
+        <div id="dayLabel" class="day-label">今天</div>
+        <div id="dateLabel" class="date-label"></div>
+      </div>
+      <button class="icon-btn" id="nextDay" aria-label="後一天">
+        <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </header>
+
+    <div class="backup-tip" id="backupTip" hidden>
+      <span class="bt-ic">📦</span>
+      <span class="bt-text"><b id="backupTipText"></b>紀錄只存在這支手機上</span>
+      <button id="tipBackup" class="bt-btn">立即備份</button>
+      <button id="tipLater" class="bt-later" aria-label="7 天後再提醒">稍後</button>
+    </div>
+
+    <!-- 這天還沒運動時：顯示前一天算出的建議，可一鍵記錄 -->
+    <div class="card plan-mini" id="todayPlan" hidden></div>
+
+    <div class="card">
+      <div class="card-title">身體狀況</div>
+      <div class="feels" id="feels"></div>
+      <div class="card-title sub-title">痠痛部位</div>
+      <div class="chips" id="sore"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="sessTitle">今天做了什麼</div>
+      <div id="sessions"></div>
+      <button class="add-btn" id="addSession">＋ 新增運動</button>
+    </div>
+
+    <!-- 明天建議（依目前所有紀錄即時計算） -->
+    <div class="card plan" id="nextPlan"></div>
+
+    <div class="save-row">
+      <span id="saveStatus" class="save-status"></span>
+      <button id="deleteEntry" class="text-btn danger" hidden>清除這天</button>
+    </div>
+  </section>
+
+  <!-- 日曆 -->
+  <section id="view-calendar" class="view">
+    <h2 class="page-title">日曆</h2>
+    <div class="card">
+      <div class="cal-head">
+        <button class="icon-btn" id="calPrev" aria-label="上個月">
+          <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="cal-title" id="calTitle"></div>
+        <button class="icon-btn" id="calNext" aria-label="下個月">
+          <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="legend" id="calLegend"></div>
+    </div>
+    <div class="section-title" id="monthSum"></div>
+    <div id="monthList"></div>
+  </section>
+
+  <!-- 統計 -->
+  <section id="view-stats" class="view">
+    <h2 class="page-title">統計</h2>
+    <div class="seg" id="rangeSeg">
+      <button data-r="7">7 天</button>
+      <button data-r="30" class="on">30 天</button>
+      <button data-r="90">90 天</button>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="card chart">
+      <div class="card-title">每天運動時間（分鐘）</div>
+      <div id="chart"></div>
+      <div class="legend" id="chartLegend"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">本週進度（近 7 天）</div>
+      <div id="weekGoal"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">部位恢復狀態</div>
+      <div id="recovery"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">運動項目</div>
+      <div id="typeStats"></div>
+    </div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="view-settings" class="view">
+    <h2 class="page-title">設定</h2>
+    <div class="list-title">運動目標（影響明天建議）</div>
+    <div class="list pad">
+      <div class="seg" id="goalSeg"></div>
+      <div class="hint" id="goalDesc"></div>
+    </div>
+
+    <div class="list-title">每週想運動幾天</div>
+    <div class="list pad">
+      <div class="seg" id="daysSeg"></div>
+      <div class="hint">達到天數後，建議會偏向休息或輕鬆恢復</div>
+    </div>
+
+    <div class="list-title">資料</div>
+    <div class="list">
+      <button class="row" id="btnExport">
+        <span class="ic">📤</span>
+        <span class="grow">匯出備份<span class="sub" id="exportSub">存成 JSON 檔，可存到「檔案」或 iCloud</span></span>
+        <span class="chev">›</span>
+      </button>
+      <button class="row" id="btnImport">
+        <span class="ic">📥</span>
+        <span class="grow">匯入備份<span class="sub">與現有紀錄合併</span></span>
+        <span class="chev">›</span>
+      </button>
+    </div>
+
+    <div class="list">
+      <button class="row danger" id="btnClear">
+        <span class="ic">🗑️</span>
+        <span class="grow">清除所有資料</span>
+      </button>
+    </div>
+
+    <p class="note-text">
+      建議是依照你的紀錄（最近的運動量、每個部位休息了幾天、身體狀況、痠痛）用固定規則算出來的，僅供參考。身體不舒服或受傷時請以休息與就醫為優先。
+    </p>
+    <p class="note-text">
+      所有紀錄只存在這支手機上，不會上傳到任何地方。建議偶爾匯出備份，以免刪除 App 時資料遺失。
+    </p>
+    <p class="note-text" id="statsLine"></p>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="tab active" data-tab="today">
+    <svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>
+    今天
+  </button>
+  <button class="tab" data-tab="calendar">
+    <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+    日曆
+  </button>
+  <button class="tab" data-tab="stats">
+    <svg viewBox="0 0 24 24"><path d="M5 20v-8M12 20V5M19 20v-5"/></svg>
+    統計
+  </button>
+  <button class="tab" data-tab="settings">
+    <svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+    設定
+  </button>
+</nav>
+
+<!-- 新增／編輯運動 -->
+<div class="sheet-bg" id="sheet" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <button class="text-btn" id="sheetCancel">取消</button>
+      <b id="sheetTitle">新增運動</b>
+      <button class="text-btn strong" id="sheetSave">儲存</button>
+    </div>
+    <div class="card-title">項目</div>
+    <div class="types" id="typeGrid"></div>
+    <div class="card-title">時間</div>
+    <div class="ex-row">
+      <input class="field ex-input" id="sMin" type="number" inputmode="numeric" min="1" max="600" placeholder="0">
+      <span class="ex-unit">分鐘</span>
+      <div class="chips ex-quick" id="minQuick"></div>
+    </div>
+    <div class="card-title">強度</div>
+    <div class="seg" id="rpeSeg"></div>
+    <div class="hint" id="rpeHint"></div>
+    <input class="field" id="sNote" maxlength="60" placeholder="備註（選填）：距離、重量、組數…">
+    <button class="text-btn danger" id="sheetDelete" hidden>刪除這項運動</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<script src="app.js"></script>
+</body>
+</html>
