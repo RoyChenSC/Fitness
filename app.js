@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
