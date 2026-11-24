@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.5.2';
+const VERSION = '1.6';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -95,14 +95,15 @@ const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
-const blank = () => ({ entries: {}, goal: 'hybrid', days: 6, pullGoal: 20, raceDate: '', ver: 2 });
+const blank = () => ({ entries: {}, goal: 'hybrid', days: 6, pullGoal: 20, pullOn: true, situpGoal: 50, situpOn: true, raceDate: '', ver: 2 });
 
 function load() {
   try {
     const d = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (d && typeof d.entries === 'object') {
       Object.values(d.entries).forEach((e) => { if (e && e.sore) e.sore = normParts(e.sore); });
-      const o = { entries: d.entries, goal: GOALS[d.goal] ? d.goal : 'hybrid', days: d.days >= 2 && d.days <= 7 ? d.days : 6, pullGoal: d.pullGoal >= 1 && d.pullGoal <= 100 ? d.pullGoal : 20, raceDate: /^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '') ? d.raceDate : '', ver: 2 };
+      const o = { entries: d.entries, goal: GOALS[d.goal] ? d.goal : 'hybrid', days: d.days >= 2 && d.days <= 7 ? d.days : 6, pullGoal: d.pullGoal >= 1 && d.pullGoal <= 100 ? d.pullGoal : 20, pullOn: d.pullOn !== false,
+        situpGoal: d.situpGoal >= 1 && d.situpGoal <= 150 ? d.situpGoal : 50, situpOn: d.situpOn !== false, raceDate: /^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '') ? d.raceDate : '', ver: 2 };
       // v1.0 的預設是「健康、每週 4 天」；使用者主要做健身＋跑馬拉松，沒改過預設的就換成新目標
       if (!d.ver && d.goal === 'health' && d.days === 4) { o.goal = 'hybrid'; o.days = 6; }
       return o;
@@ -132,6 +133,7 @@ function cleanEntry(e) {
   };
   if (e.feel >= 1 && e.feel <= 5) o.feel = Math.round(e.feel);
   if (e.pullMax >= 0 && e.pullMax <= 100) o.pullMax = Math.round(e.pullMax);
+  if (e.situpMax >= 0 && e.situpMax <= 150) o.situpMax = Math.round(e.situpMax);
   if (e.sleep >= 0 && e.sleep <= 14) o.sleep = Math.round(e.sleep);
   if (e.rhr >= 30 && e.rhr <= 120) o.rhr = Math.round(e.rhr);
   return o;
@@ -314,8 +316,10 @@ function recommend(target) {
 
   if (!s.any) {
     if (data.goal === 'hybrid') {
-      return { kind: 'start', badge: '🌱', title: '先跑一次輕鬆跑', reasons: ['還沒有運動紀錄，先用輕鬆跑建立基礎，之後建議會依紀錄調整'],
-        items: [{ type: 'easy_run', min: 30, rpe: 1 }, { type: 'core', min: 15, rpe: 2 }] };
+      const su = testOn('situp');
+      return { kind: 'start', badge: '🌱', title: '先跑一次輕鬆跑',
+        reasons: ['還沒有運動紀錄，先用輕鬆跑建立基礎，之後建議會依紀錄調整', ...(su ? ['腹肌先測一次仰臥起坐 1 分鐘最多幾下，之後課表依次數安排'] : [])],
+        items: [{ type: 'easy_run', min: 30, rpe: 1 }, su ? { type: 'core', min: 20, rpe: 2, ex: [...situpEx(null, true), ...exFor('core')] } : { type: 'core', min: 15, rpe: 2 }] };
     }
     return { kind: 'start', badge: '🌱', title: '從輕鬆的開始', reasons: ['還沒有運動紀錄，先養成習慣最重要'],
       items: [{ type: 'walk', min: 20, rpe: 2 }, { type: 'stretch', min: 10, rpe: 1 }] };
@@ -357,18 +361,35 @@ function recommend(target) {
   return data.goal === 'hybrid' ? recommendHybrid(target, s, flexItem, r) : recommendGeneral(s, g, fav, flexItem, r);
 }
 
-/* ----- 引體向上 ----- */
+/* ----- 次數目標：引體向上、仰臥起坐（可在設定頁決定是否列入目標） ----- */
+const TESTS = {
+  pull: { name: '引體向上', key: 'pullMax', on: 'pullOn', goal: 'pullGoal', def: 20, max: 100, ex: '引體向上測驗', unit: '一次拉' },
+  situp: { name: '仰臥起坐', key: 'situpMax', on: 'situpOn', goal: 'situpGoal', def: 50, max: 150, ex: '仰臥起坐測驗', unit: '1 分鐘' },
+};
+const testOn = (t) => data[TESTS[t].on] !== false;
+const testGoal = (t) => data[TESTS[t].goal] || TESTS[t].def;
 // 目標日之前最近一次的最大次數測驗 { k, v }
-function lastPullTest(before) {
-  const k = Object.keys(data.entries).filter((x) => x < before && data.entries[x].pullMax != null).sort().pop();
-  return k ? { k, v: data.entries[k].pullMax } : null;
+function lastTest(t, before) {
+  const key = TESTS[t].key;
+  const k = Object.keys(data.entries).filter((x) => x < before && data.entries[x][key] != null).sort().pop();
+  return k ? { k, v: data.entries[k][key] } : null;
 }
-function bestPull() {
-  return Object.values(data.entries).reduce((m, e) => (e.pullMax != null && e.pullMax > m ? e.pullMax : m), -1);
+function bestTest(t) {
+  const key = TESTS[t].key;
+  return Object.values(data.entries).reduce((m, e) => (e[key] != null && e[key] > m ? e[key] : m), -1);
+}
+// 仰臥起坐（1 分鐘屈膝）：腹肌日先做，每組約最大次數 65%、3 組；達標後 2 組維持
+function situpEx(M, test) {
+  const L = [];
+  if (test) L.push(X('仰臥起坐測驗', 1, '1 分鐘', '2 分', false));
+  if (M == null) return L.length ? L : [X('仰臥起坐', 3, '能做幾下做幾下', '60 秒', false)];
+  if (M < testGoal('situp')) L.push(X('仰臥起坐', 3, String(Math.max(5, Math.round(M * .65))), '60 秒', false));
+  else L.push(X('仰臥起坐', 2, String(Math.round(M * .5)), '60 秒', false));
+  return L;
 }
 // 依目前最大次數 M 排引體向上課表：多組、不力竭的次最大量累積總次數；做不到 1 下先練離心；十幾下以後加負重
 function pullupEx(M, test, onPullDay) {
-  const goal = data.pullGoal || 20;
+  const goal = testGoal('pull');
   const L = [];
   if (test) L.push(X('引體向上測驗', 1, '到力竭', '3 分', false));
   if (M == null) return L.length ? L : [X('引體向上', 4, '能做幾下做幾下', '2 分', false)];
@@ -472,13 +493,13 @@ function recommendHybrid(target, s, flexItem, r) {
   }
 
   // 引體向上：每週 3 次（背日算在內），每 2 週測一次最大次數
-  const goal = data.pullGoal || 20;
-  const pt = lastPullTest(target);
-  const M = pt ? pt.v : null;
-  const testDue = (!pt || Math.round((parseKey(target) - parseKey(pt.k)) / 864e5) >= 14) && !easyDay && !taper;
+  const goal = testGoal('pull');
+  const dueOf = (t) => { const x = lastTest(t, target); return { M: x ? x.v : null, due: (!x || Math.round((parseKey(target) - parseKey(x.k)) / 864e5) >= 14) && !easyDay && !taper }; };
+  const { M, due: testDue } = dueOf('pull');
   const pullItem = items.find((i) => i.type === 'pull');
   let pullupAdded = false;
-  if (pullItem) {
+  if (!testOn('pull')) { /* 引體向上未列入目標：背日照一般動作，不另排專項 */ }
+  else if (pullItem) {
     pullItem.ex = [...pullupEx(M, testDue, true), ...exFor('pull').slice(1)];
     pullupAdded = true;
   } else if ((M == null || M < goal) && run !== 'long' && cnt('pullup') < W.pullup && free(['back']) && since('pullup', 2)) {
@@ -499,14 +520,25 @@ function recommendHybrid(target, s, flexItem, r) {
     items.push({ type: 'core', min: 15, rpe: 2 });
     why.push(`冰塊腹肌：腹肌每週 3 次、要負重漸進（近 7 天 ${cnt('core')} 次）；但要看得到，體脂約需 10–12%，飲食更關鍵`);
   }
+  // 仰臥起坐目標：排在腹肌日（每週 3 次），每 2 週測一次 1 分鐘最多次數
+  const coreItem = items.find((i) => i.type === 'core');
+  if (coreItem && testOn('situp')) {
+    const sg = testGoal('situp');
+    const su = dueOf('situp');
+    coreItem.ex = [...situpEx(su.M, su.due), ...exFor('core')];
+    coreItem.min = 20;
+    why.push(su.M == null ? `仰臥起坐 1 分鐘 ${sg} 下：先測一次 1 分鐘最多幾下，課表才能依程度安排`
+      : su.M >= sg ? `仰臥起坐已達 1 分鐘 ${sg} 下目標，維持即可`
+      : `仰臥起坐 1 分鐘 ${sg} 下：目前 ${su.M} 下，還差 ${sg - su.M} 下；腹肌日先做 3 組、每組約最大次數 65%`);
+    if (su.due && su.M != null) why.push('距離上次仰臥起坐測驗已 2 週，先測 1 分鐘最多次數');
+  }
   const sore = [...s.sore];
   if (sore.length) why.push(`${partNames(sore)}痠痛，相關訓練先避開`);
 
   // 一天最多 3 個主項目，太多就把腹肌移到之後
   if (items.length > 3 && items.some((i) => i.type === 'core')) {
     items.splice(items.findIndex((i) => i.type === 'core'), 1);
-    const ci = why.findIndex((w) => w.startsWith('冰塊腹肌'));
-    if (ci >= 0) why.splice(ci, 1);
+    for (let ci = why.length - 1; ci >= 0; ci--) if (/^(冰塊腹肌|仰臥起坐|距離上次仰臥起坐)/.test(why[ci])) why.splice(ci, 1);
     why.push('今天項目已經夠多，腹肌移到之後');
   }
   // 依狀態調整重訓內容
@@ -516,7 +548,7 @@ function recommendHybrid(target, s, flexItem, r) {
   const half = s.deload || taper;
   items.forEach((i) => {
     if (TYPE[i.type].cat !== 'strength') return;
-    i.ex = (i.ex || exFor(i.type)).map((o) => (o.reps === '到力竭' ? o : { ...o, sets: half ? Math.ceil(o.sets / 2) : easyDay ? Math.max(1, o.sets - 1) : o.sets }));
+    i.ex = (i.ex || exFor(i.type)).map((o) => (/測驗/.test(o.n) ? o : { ...o, sets: half ? Math.ceil(o.sets / 2) : easyDay ? Math.max(1, o.sets - 1) : o.sets }));
     if (note) i.note = note;
     if (half || easyDay) i.min = round5(i.min * (half ? .6 : .75));
   });
@@ -626,7 +658,7 @@ function ensureEntry() {
 // 這天沒有任何內容時刪掉，避免留下空紀錄
 function tidy(k) {
   const e = data.entries[k];
-  if (e && !e.sessions.length && !e.feel && !(e.sore && e.sore.length) && e.pullMax == null && e.sleep == null && !e.rhr) delete data.entries[k];
+  if (e && !e.sessions.length && !e.feel && !(e.sore && e.sore.length) && e.pullMax == null && e.situpMax == null && e.sleep == null && !e.rhr) delete data.entries[k];
 }
 function touch() {
   const e = data.entries[curDate];
@@ -693,22 +725,27 @@ function renderToday() {
 
   $('#saveStatus').textContent = e ? `已儲存 · ${fmtTime(e.t)}` : '運動完記下來，建議會自動更新';
   $('#deleteEntry').hidden = !e;
-  renderPullCard(e);
+  renderTestCard('pull', e);
+  renderTestCard('situp', e);
   renderBackupTip();
 }
 
-/* ----- 引體向上測驗 ----- */
-function renderPullCard(e) {
-  const goal = data.pullGoal || 20;
-  const best = bestPull();
-  $('#pullVal').textContent = e && e.pullMax != null ? e.pullMax : '未填';
-  $('#pullGoalLbl').textContent = goal;
-  $('#pullBest').textContent = best >= 0 ? `${best} 下` : '尚未測驗';
-  $('#pullBar').style.width = `${Math.min(100, Math.max(0, best) / goal * 100)}%`;
-  const pt = lastPullTest(addDays(curDate, 1));
+/* ----- 引體向上／仰臥起坐測驗卡片 ----- */
+function renderTestCard(t, e) {
+  const T = TESTS[t];
+  $(`#${t}Card`).hidden = !testOn(t);
+  if (!testOn(t)) return;
+  const goal = testGoal(t);
+  const best = bestTest(t);
+  $(`#${t}Val`).textContent = e && e[T.key] != null ? e[T.key] : '未填';
+  $(`#${t}GoalLbl`).textContent = goal;
+  $(`#${t}Best`).textContent = best >= 0 ? `${best} 下` : '尚未測驗';
+  $(`#${t}Bar`).style.width = `${Math.min(100, Math.max(0, best) / goal * 100)}%`;
+  const pt = lastTest(t, addDays(curDate, 1));
   const days = pt ? Math.round((parseKey(curDate) - parseKey(pt.k)) / 864e5) : null;
-  $('#pullHint').textContent = best >= goal ? `已達成 ${goal} 下！🎉 每 2 週測一次維持`
-    : pt == null ? '充分暖身後，標準動作（手臂伸直、下巴過槓）做 1 組到力竭，記下次數'
+  $(`#${t}Hint`).textContent = best >= goal ? `已達成 ${goal} 下！🎉 每 2 週測一次維持`
+    : pt == null ? (t === 'pull' ? '充分暖身後，標準動作（手臂伸直、下巴過槓）做 1 組到力竭，記下次數'
+      : '屈膝約 90°、雙手抱胸，起身到手肘碰大腿再躺回，計時 1 分鐘記下次數')
     : days >= 14 ? `上次測驗是 ${days} 天前，該再測一次了` : `上次測驗：${shortDate(pt.k)}，${pt.v} 下；建議每 2 週測一次`;
 }
 // ＋／－ 調整數值：第一次按從上一次的值開始，長按不用
@@ -722,13 +759,13 @@ function stepper(sel, get, set, start, lo, hi) {
     touch();
   });
 }
-stepper('#pullStp', () => { const e = data.entries[curDate]; return e && e.pullMax != null ? e.pullMax : null; }, (v) => {
+Object.entries(TESTS).forEach(([t, T]) => stepper(`#${t}Stp`, () => { const e = data.entries[curDate]; return e && e[T.key] != null ? e[T.key] : null; }, (v) => {
   const e = ensureEntry();
-  if (v == null) { delete e.pullMax; return; }
-  const prev = Math.max(-1, ...Object.entries(data.entries).filter(([k]) => k !== curDate).map(([, x]) => (x.pullMax != null ? x.pullMax : -1)));
-  e.pullMax = v;
+  if (v == null) { delete e[T.key]; return; }
+  const prev = Math.max(-1, ...Object.entries(data.entries).filter(([k]) => k !== curDate).map(([, x]) => (x[T.key] != null ? x[T.key] : -1)));
+  e[T.key] = v;
   if (v > prev && prev >= 0) toast(`新紀錄！${v} 下 💪`);
-}, () => { const pt = lastPullTest(curDate); return pt ? pt.v : 0; }, 0, 100);
+}, () => { const pt = lastTest(t, curDate); return pt ? pt.v : 0; }, 0, T.max));
 
 $('#feels').addEventListener('click', (ev) => {
   const b = ev.target.closest('.feel');
@@ -815,7 +852,8 @@ function fillEx(list) {
   return list.map((o) => {
     const l = lastEx(o.n);
     const x = { ...o, w: l ? l.w || 0 : (o.load ? W0[o.n] || 0 : 0), r: l ? l.r : parseInt(o.reps, 10) || 0, done: 0 };
-    if (o.reps === '到力竭') { const pt = lastPullTest(addDays(curDate, 1)); x.r = pt ? pt.v : 0; }
+    const tk = Object.keys(TESTS).find((t) => TESTS[t].ex === o.n);
+    if (tk) { const pt = lastTest(tk, addDays(curDate, 1)); x.r = pt ? pt.v : 0; }
     // 減量週、賽前減量、狀態普通時組數較少，做完也不算達標
     if (l && !l.light && o.load && l.w > 0 && l.done >= l.sets && l.r >= hiRep(o.reps)) { x.w = l.w + wStep(l.w); x.r = parseInt(o.reps, 10) || x.r; x.up = true; }
     return x;
@@ -902,9 +940,8 @@ $('#sheetSave').addEventListener('click', () => {
   if (editing.ex && editing.ex.length) {
     s.ex = editing.ex.map(({ up, ...o }) => o);
     if (/減量/.test(recommend(curDate).tag || '')) s.light = true;
-    // 引體向上測驗做完 → 自動記成這天的最大次數
-    const t = s.ex.find((o) => o.reps === '到力竭' && o.done > 0);
-    if (t) { e.pullMax = t.r; }
+    // 引體向上／仰臥起坐測驗做完 → 自動記成這天的最大次數
+    Object.values(TESTS).forEach((T) => { const t = s.ex.find((o) => o.n === T.ex && o.done > 0); if (t) e[T.key] = Math.min(T.max, t.r); });
   }
   const i = e.sessions.findIndex((x) => x.id === s.id);
   if (i >= 0) e.sessions[i] = s; else e.sessions.push(s);
@@ -1029,15 +1066,18 @@ function renderStats() {
       <span class="tag" style="--c:${ok ? 'var(--c-flex)' : 'var(--c-cardio)'}">${ok ? '可以練' : '恢復中'}</span></div>`;
   }).join('');
 
-  // 引體向上紀錄（全部測驗，最近 8 次）
-  const goal = data.pullGoal || 20;
-  const tests = Object.keys(data.entries).filter((k) => data.entries[k].pullMax != null).sort().slice(-8);
-  $('#pullStats').innerHTML = tests.length ? tests.map((k) => {
-    const v = data.entries[k].pullMax;
-    return `<div class="goal-row"><span>${shortDate(k)}</span>
-      <div class="bar"><i style="width:${Math.min(100, v / goal * 100)}%;--c:${catColor('strength')}"></i></div>
-      <span class="cnt">${v} / ${goal} 下</span></div>`;
-  }).join('') : '<div class="empty">還沒有測驗紀錄，到「今天」頁記下最多能拉幾下</div>';
+  // 引體向上／仰臥起坐紀錄（全部測驗，最近 8 次）
+  Object.entries(TESTS).forEach(([t, T]) => {
+    $(`#${t}StatsCard`).hidden = !testOn(t);
+    const goal = testGoal(t);
+    const tests = Object.keys(data.entries).filter((k) => data.entries[k][T.key] != null).sort().slice(-8);
+    $(`#${t}Stats`).innerHTML = tests.length ? tests.map((k) => {
+      const v = data.entries[k][T.key];
+      return `<div class="goal-row"><span>${shortDate(k)}</span>
+        <div class="bar"><i style="width:${Math.min(100, v / goal * 100)}%;--c:${catColor('strength')}"></i></div>
+        <span class="cnt">${v} / ${goal} 下</span></div>`;
+    }).join('') : `<div class="empty">還沒有測驗紀錄，到「今天」頁記下${t === 'pull' ? '最多能拉幾下' : ' 1 分鐘最多幾下'}</div>`;
+  });
 
   // 項目統計
   const m = {};
@@ -1059,7 +1099,11 @@ $('#rangeSeg').addEventListener('click', (ev) => {
 $('#goalSeg').innerHTML = Object.entries(GOALS).map(([k, g]) => `<button class="chip" data-g="${k}">${g.name}</button>`).join('');
 $('#daysSeg').innerHTML = [2, 3, 4, 5, 6].map((d) => `<button data-d="${d}">${d} 天</button>`).join('');
 function renderSettings() {
-  if (document.activeElement !== $('#pullGoalInput')) $('#pullGoalInput').value = data.pullGoal || 20;
+  Object.keys(TESTS).forEach((t) => {
+    if (document.activeElement !== $(`#${t}GoalInput`)) $(`#${t}GoalInput`).value = testGoal(t);
+    $(`#${t}On`).checked = testOn(t);
+    $(`#${t}GoalRow`).hidden = !testOn(t);
+  });
   $('#raceDate').value = data.raceDate || '';
   $('#raceClear').hidden = !data.raceDate;
   const rd = data.raceDate ? Math.round((parseKey(data.raceDate) - parseKey(todayKey())) / 864e5) : null;
@@ -1087,10 +1131,18 @@ $('#raceClear').addEventListener('click', () => {
   renderSettings();
   toast('已清除比賽日期');
 });
-$('#pullGoalInput').addEventListener('change', () => {
-  const v = Math.round(+$('#pullGoalInput').value);
-  if (v >= 1 && v <= 100) { data.pullGoal = v; persist(); toast(`引體向上目標：${v} 下`); }
-  renderSettings();
+Object.entries(TESTS).forEach(([t, T]) => {
+  $(`#${t}GoalInput`).addEventListener('change', () => {
+    const v = Math.round(+$(`#${t}GoalInput`).value);
+    if (v >= 1 && v <= T.max) { data[T.goal] = v; persist(); toast(`${T.name}目標：${T.unit} ${v} 下`); }
+    renderSettings();
+  });
+  $(`#${t}On`).addEventListener('change', () => {
+    data[T.on] = $(`#${t}On`).checked;
+    persist();
+    renderAll();
+    toast(data[T.on] ? `已列入目標：${T.name}` : `已取消${T.name}目標，課表不再安排專項`);
+  });
 });
 $('#daysSeg').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) { data.days = +b.dataset.d; persist(); renderSettings(); } });
 
@@ -1153,6 +1205,9 @@ $('#importFile').addEventListener('change', async (ev) => {
     if (GOALS[d.goal]) data.goal = d.goal;
     if (d.days >= 2 && d.days <= 7) data.days = d.days;
     if (d.pullGoal >= 1 && d.pullGoal <= 100) data.pullGoal = d.pullGoal;
+    if (d.situpGoal >= 1 && d.situpGoal <= 150) data.situpGoal = d.situpGoal;
+    if (typeof d.pullOn === 'boolean') data.pullOn = d.pullOn;
+    if (typeof d.situpOn === 'boolean') data.situpOn = d.situpOn;
     if (/^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '')) data.raceDate = d.raceDate;
     persist();
     renderAll();

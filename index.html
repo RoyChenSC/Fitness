@@ -59,13 +59,22 @@
       <button class="add-btn" id="addSession">＋ 新增運動</button>
     </div>
 
-    <div class="card">
+    <div class="card" id="pullCard">
       <div class="card-title">引體向上 <span class="pull-best">最佳 <b id="pullBest"></b>／目標 <span id="pullGoalLbl"></span> 下</span></div>
       <div class="bar pull-bar"><i id="pullBar" style="--c:var(--c-strength)"></i></div>
       <div class="kv"><span class="k">今天測驗</span>
         <span class="stp" id="pullStp"><button data-a="-" aria-label="減少">−</button><b id="pullVal">未填</b><button data-a="+" aria-label="增加">＋</button></span>
         <span class="unit">下</span></div>
       <div class="hint" id="pullHint"></div>
+    </div>
+
+    <div class="card" id="situpCard">
+      <div class="card-title">仰臥起坐 <small class="sub">1 分鐘</small> <span class="pull-best">最佳 <b id="situpBest"></b>／目標 <span id="situpGoalLbl"></span> 下</span></div>
+      <div class="bar pull-bar"><i id="situpBar" style="--c:var(--c-strength)"></i></div>
+      <div class="kv"><span class="k">今天測驗</span>
+        <span class="stp" id="situpStp"><button data-a="-" aria-label="減少">−</button><b id="situpVal">未填</b><button data-a="+" aria-label="增加">＋</button></span>
+        <span class="unit">下</span></div>
+      <div class="hint" id="situpHint"></div>
     </div>
 
     <!-- 明天建議（依目前所有紀錄即時計算） -->
@@ -119,9 +128,13 @@
       <div class="card-title">部位恢復狀態</div>
       <div id="recovery"></div>
     </div>
-    <div class="card">
+    <div class="card" id="pullStatsCard">
       <div class="card-title">引體向上測驗</div>
       <div id="pullStats"></div>
+    </div>
+    <div class="card" id="situpStatsCard">
+      <div class="card-title">仰臥起坐測驗（1 分鐘）</div>
+      <div id="situpStats"></div>
     </div>
     <div class="card">
       <div class="card-title">運動項目</div>
@@ -217,6 +230,23 @@
     </details>
 
     <details class="card g">
+      <summary><h3>⏱️ 仰臥起坐（1 分鐘）</h3></summary>
+      <ul>
+        <li>測驗方式：屈膝約 90°、雙手抱胸，起身到手肘碰大腿再躺回，<b>計時 1 分鐘</b>記下次數</li>
+        <li>跟著<b>腹肌日（每週 3 次）</b>練：先做 3 組、每組約最大次數的 <b>60–70%</b>，休息 60 秒，不拚到力竭</li>
+        <li>穩定量的累積比常常測到力竭更有效；達標後每次 2 組維持即可</li>
+        <li><b>每 2 週測一次</b>，課表會依最新次數自動調整</li>
+        <li>可練「配速」：開頭 15–20 秒最容易衝太快，後面就沒力；平常練習時用目標配速做 30 秒的組</li>
+        <li>仰臥起坐是耐力指標，<b>不會讓腹肌變明顯</b>；腹肌線條主要靠負重腹肌訓練與降低體脂</li>
+        <li>不想把它當目標：到「設定」關掉「列入目標」，課表就不再安排</li>
+      </ul>
+      <div class="src">來源：
+        <a href="https://www.topendsports.com/testing/tests/home-situp.htm">Sit-up 測驗與訓練建議（Topend Sports）</a>、
+        <a href="https://365.military.com/military-fitness/workouts/situp-test-help-improve-fast">仰臥起坐測驗快速進步（Military.com）</a>、
+        <a href="https://www.fitness.org.tw/">教育部體育署體適能網站</a></div>
+    </details>
+
+    <details class="card g">
       <summary><h3>🧱 冰塊腹肌</h3></summary>
       <ul>
         <li>腹肌要像其他肌肉一樣<b>負重、漸進</b>：懸吊抬腿、健腹輪、繩索捲腹</li>
@@ -287,12 +317,28 @@
 
     <div class="list-title">引體向上目標</div>
     <div class="list pad">
-      <div class="ex-row">
-        <span class="ex-unit">一次拉</span>
-        <input class="field ex-input" id="pullGoalInput" type="number" inputmode="numeric" min="1" max="100">
-        <span class="ex-unit">下</span>
+      <label class="sw-row"><span>列入目標</span><input type="checkbox" class="sw" id="pullOn"></label>
+      <div id="pullGoalRow" class="goal-set">
+        <div class="ex-row">
+          <span class="ex-unit">一次拉</span>
+          <input class="field ex-input" id="pullGoalInput" type="number" inputmode="numeric" min="1" max="100">
+          <span class="ex-unit">下</span>
+        </div>
+        <div class="hint">課表會依你最近一次測驗的次數安排；建議每 2 週測一次</div>
       </div>
-      <div class="hint">課表會依你最近一次測驗的次數安排；建議每 2 週測一次</div>
+    </div>
+
+    <div class="list-title">仰臥起坐目標</div>
+    <div class="list pad">
+      <label class="sw-row"><span>列入目標</span><input type="checkbox" class="sw" id="situpOn"></label>
+      <div id="situpGoalRow" class="goal-set">
+        <div class="ex-row">
+          <span class="ex-unit">1 分鐘</span>
+          <input class="field ex-input" id="situpGoalInput" type="number" inputmode="numeric" min="1" max="150">
+          <span class="ex-unit">下</span>
+        </div>
+        <div class="hint">腹肌日會先練仰臥起坐，依最近一次測驗的次數安排；建議每 2 週測一次</div>
+      </div>
     </div>
 
     <div class="list-title">資料</div>

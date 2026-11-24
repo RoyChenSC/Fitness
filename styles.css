@@ -392,3 +392,15 @@ details.card.g[open] > summary { margin-bottom: 10px; }
   .exr .stp b { min-width: 52px; }
   .plan-mini .txt b { font-size: 14px; }
 }
+
+/* ---------- v1.6：目標開關（引體向上、仰臥起坐） ---------- */
+.card[hidden], .goal-set[hidden] { display: none; }
+.card-title .sub { font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.sw-row { display: flex; align-items: center; justify-content: space-between; font-size: 15px; cursor: pointer; }
+.goal-set { margin-top: 12px; padding-top: 12px; border-top: .5px solid var(--line); }
+.sw { appearance: none; -webkit-appearance: none; position: relative; width: 50px; height: 30px; flex: none; margin: 0;
+  border-radius: 15px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; transition: background .2s; }
+.sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 26px; height: 26px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s; }
+.sw:checked { background: var(--accent); box-shadow: none; }
+.sw:checked::after { transform: translateX(20px); }
