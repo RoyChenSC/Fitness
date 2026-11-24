@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.6';
+const VERSION = '1.6.1';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -744,13 +744,34 @@ function renderTestCard(t, e) {
   const pt = lastTest(t, addDays(curDate, 1));
   const days = pt ? Math.round((parseKey(curDate) - parseKey(pt.k)) / 864e5) : null;
   $(`#${t}Hint`).textContent = best >= goal ? `已達成 ${goal} 下！🎉 每 2 週測一次維持`
-    : pt == null ? (t === 'pull' ? '充分暖身後，標準動作（手臂伸直、下巴過槓）做 1 組到力竭，記下次數'
-      : '屈膝約 90°、雙手抱胸，起身到手肘碰大腿再躺回，計時 1 分鐘記下次數')
+    : pt == null ? (t === 'pull' ? '充分暖身後，標準動作（手臂伸直、下巴過槓）做 1 組到力竭，記下次數（點數字可直接輸入）'
+      : '屈膝約 90°、雙手抱胸，起身到手肘碰大腿再躺回，計時 1 分鐘記下次數（點數字可直接輸入）')
     : days >= 14 ? `上次測驗是 ${days} 天前，該再測一次了` : `上次測驗：${shortDate(pt.k)}，${pt.v} 下；建議每 2 週測一次`;
 }
 // ＋／－ 調整數值：第一次按從上一次的值開始，長按不用
+// 點中間的數字 → 變成輸入框直接打數字（次數多時不用一直按 ＋）；空白或超出範圍就不改
+function numInput(el, val, lo, hi, dec, done) {
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.inputMode = dec ? 'decimal' : 'numeric'; inp.className = 'stp-in';
+  inp.min = lo; inp.max = hi; inp.step = dec ? '0.5' : '1'; inp.value = val == null ? '' : val;
+  el.replaceChildren(inp);
+  inp.focus(); inp.select();
+  let fin = false;
+  const commit = (ok) => {
+    if (fin) return; fin = true;
+    const v = dec ? Math.round(+inp.value * 10) / 10 : Math.round(+inp.value);
+    done(ok && inp.value !== '' && v >= lo && v <= hi ? v : undefined);
+  };
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') commit(true); else if (e.key === 'Escape') commit(false); });
+  inp.addEventListener('blur', () => commit(true));
+}
 function stepper(sel, get, set, start, lo, hi) {
   $(sel).addEventListener('click', (ev) => {
+    if (ev.target.closest('input')) return;
+    if (ev.target.closest('b')) {
+      numInput(ev.target.closest('b'), get(), lo, hi, false, (v) => { if (v !== undefined) set(v); touch(); });
+      return;
+    }
     const b = ev.target.closest('button');
     if (!b) return;
     const cur = get();
@@ -898,8 +919,8 @@ function renderEx() {
   $('#exList').innerHTML = ex.map((o, i) => `<div class="exr" data-i="${i}">
     <div class="exr-top"><b>${esc(o.n)}</b>${o.up ? '<span class="up">⬆ 加重</span>' : ''}<span class="rt">${o.sets}×${esc(o.reps)} · ⏱ ${esc(o.rest)}</span></div>
     <div class="exr-ctl">
-      ${o.load ? `<span class="stp"><button data-a="w-">−</button><b>${o.w ? o.w + ' kg' : '徒手'}</b><button data-a="w+">＋</button></span>` : ''}
-      <span class="stp"><button data-a="r-">−</button><b>${o.r} ${/秒/.test(o.reps) ? '秒' : '下'}</b><button data-a="r+">＋</button></span>
+      ${o.load ? `<span class="stp"><button data-a="w-">−</button><b data-k="w">${o.w ? o.w + ' kg' : '徒手'}</b><button data-a="w+">＋</button></span>` : ''}
+      <span class="stp"><button data-a="r-">−</button><b data-k="r">${o.r} ${/秒/.test(o.reps) ? '秒' : '下'}</b><button data-a="r+">＋</button></span>
       <span class="sets">${Array.from({ length: o.sets }, (_, k) => `<button class="set${k < (o.done || 0) ? ' on' : ''}" data-s="${k}">${k + 1}</button>`).join('')}</span>
     </div></div>`).join('');
 }
@@ -913,10 +934,20 @@ function renderSheet() {
 const closeSheet = () => { $('#sheet').hidden = true; editing = null; };
 $('#typeGrid').addEventListener('click', (ev) => { const b = ev.target.closest('.type'); if (b && b.dataset.t !== editing.type) { editing.type = b.dataset.t; prepEx(true); renderSheet(); } });
 $('#exList').addEventListener('click', (ev) => {
-  const b = ev.target.closest('button');
   const row = ev.target.closest('.exr');
-  if (!b || !row) return;
+  if (!row || ev.target.closest('input')) return;
   const o = editing.ex[+row.dataset.i];
+  const nb = ev.target.closest('b[data-k]');
+  if (nb) {
+    const k = nb.dataset.k;
+    numInput(nb, o[k], 0, k === 'w' ? 500 : 200, k === 'w', (v) => {
+      if (v !== undefined) { o[k] = v; if (k === 'w') delete o.up; }
+      renderEx();
+    });
+    return;
+  }
+  const b = ev.target.closest('button');
+  if (!b) return;
   const a = b.dataset.a;
   if (a === 'w+') o.w = Math.round((o.w + wStep(o.w)) * 10) / 10;
   else if (a === 'w-') o.w = Math.max(0, Math.round((o.w - wStep(o.w - 0.01)) * 10) / 10);
