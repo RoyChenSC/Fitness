@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.6.2';
+const VERSION = '1.6.3';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -70,7 +70,7 @@ const GOALS = {
 const X = (n, sets, reps, rest, load = true) => ({ n, sets, reps, rest, load });
 const EX = {
   push: [X('臥推', 4, '6–10', '2–3 分'), X('上斜 30° 啞鈴臥推', 4, '8–12', '90–120 秒'), X('坐姿啞鈴肩推', 4, '8–12', '90–120 秒'),
-    X('側平舉', 4, '12–20', '60–90 秒'), X('繩索飛鳥', 4, '12–15', '60–90 秒'), X('三頭下壓', 4, '10–15', '60–90 秒'),
+    X('側平舉', 4, '12–20', '60–90 秒'), X('繩索飛鳥', 4, '12–15', '60–90 秒'), X('過頭繩索三頭伸展', 4, '10–15', '60–90 秒'),
     X('上斜啞鈴彎舉', 4, '10–15', '60–90 秒')],
   pull: [X('滑輪下拉', 4, '6–12', '2 分'), X('單臂啞鈴划船', 4, '8–12', '90–120 秒'), X('臉拉', 4, '12–20', '60–90 秒'),
     X('側平舉', 4, '12–20', '60–90 秒'), X('啞鈴彎舉', 4, '10–15', '60–90 秒')],
@@ -80,7 +80,7 @@ const EX = {
   full: [X('深蹲', 4, '5–8', '2–3 分'), X('臥推', 4, '6–10', '2–3 分'), X('槓鈴划船', 4, '8–12', '90–120 秒'), X('側平舉', 4, '12–20', '60–90 秒')],
 };
 // 第一次做某個動作時的起始重量（kg，之後自動帶入上次）；0 = 徒手
-const W0 = { 臥推: 40, '上斜 30° 啞鈴臥推': 14, 坐姿啞鈴肩推: 12, 側平舉: 6, 繩索飛鳥: 10, 三頭下壓: 20, 滑輪下拉: 40, 單臂啞鈴划船: 20,
+const W0 = { 臥推: 40, '上斜 30° 啞鈴臥推': 14, 坐姿啞鈴肩推: 12, 側平舉: 6, 繩索飛鳥: 10, 過頭繩索三頭伸展: 15, 滑輪下拉: 40, 單臂啞鈴划船: 20,
   臉拉: 15, 啞鈴彎舉: 10, 上斜啞鈴彎舉: 8, 深蹲: 50, 羅馬尼亞硬舉: 50, 保加利亞分腿蹲: 10, 站姿提踵: 40, 負重繩索捲腹: 30, 槓鈴划船: 40, 負重引體向上: 5 };
 const exFor = (type) => (EX[type] || []).map((o) => ({ ...o }));
 // 有氧與伸展的說明文字
@@ -285,6 +285,9 @@ function recentStats(target) {
   // 近 8 週最長的長跑（賽前減量用）
   s.peakLong = 0;
   for (let i = 0; i < 56; i++) sessionsOf(addDays(last, -i)).forEach((x) => { if (kindsOf(x).includes('long')) s.peakLong = Math.max(s.peakLong, x.min); });
+  // 近 30 天最長的一次跑步（任何跑步都算）：長跑加長以它為基準，單次超過它 10% 以上受傷風險明顯增加（Frandsen 2025）
+  s.maxRun = null;
+  for (let i = 0; i < 30; i++) sessionsOf(addDays(last, -i)).forEach((x) => { if (TYPE[x.type].run && (!s.maxRun || x.min > s.maxRun.min)) s.maxRun = x; });
   s.raceDays = data.raceDate ? Math.round((parseKey(data.raceDate) - parseKey(target)) / 864e5) : null;
   return s;
 }
@@ -320,7 +323,7 @@ function recommend(target) {
       const su = testOn('situp');
       return { kind: 'start', badge: '🌱', title: '先跑一次輕鬆跑',
         reasons: ['還沒有運動紀錄，先用輕鬆跑建立基礎，之後建議會依紀錄調整', ...(su ? ['腹肌先測一次仰臥起坐 1 分鐘最多幾下，之後課表依次數安排'] : [])],
-        items: [{ type: 'easy_run', min: 30, rpe: 1 }, su ? { type: 'core', min: 20, rpe: 2, ex: [...situpEx(null, true), ...exFor('core')] } : { type: 'core', min: 15, rpe: 2 }] };
+        items: [{ type: 'easy_run', min: 30, rpe: 1 }, su ? { type: 'core', min: 25, rpe: 2, ex: [...situpEx(null, true), ...exFor('core')] } : { type: 'core', min: 20, rpe: 2 }] };
     }
     return { kind: 'start', badge: '🌱', title: '從輕鬆的開始', reasons: ['還沒有運動紀錄，先養成習慣最重要'],
       items: [{ type: 'walk', min: 20, rpe: 2 }, { type: 'stretch', min: 10, rpe: 1 }] };
@@ -441,14 +444,16 @@ function recommendHybrid(target, s, flexItem, r) {
   }
 
   if (run === 'long') {
-    const L = s.lastLong;
-    let min = L ? Math.min(180, round5(L.min * 1.1)) : 75;
-    let note = L ? `週末長跑：上次 ${L.min} 分鐘${L.km ? `（${L.km} km）` : ''}，這次多約 10%` : '週末長跑：馬拉松最重要的課表，每週一次';
+    // 以近 30 天最長的一次跑步為基準，每次最多多約 8%（不超過 10%）；減量週縮短、狀態普通不加長
+    const L = s.maxRun;
+    let min = L ? Math.min(180, Math.max(L.min, Math.round(L.min * 1.08))) : 45;
+    let note = L ? `週末長跑：近 30 天最長一次 ${L.min} 分鐘${L.km ? `（${L.km} km）` : ''}，這次最多多約 8%；單次比近 30 天最長多 10% 以上，受傷風險明顯增加`
+      : '週末長跑：近 30 天沒有跑步紀錄，先從 45 分鐘開始';
     if (taper) { min = round5(Math.min(rd > 14 ? 150 : 110, (s.peakLong || 90) * (rd > 14 ? .75 : .6))); note = `賽前長跑縮短為最長一次的 ${rd > 14 ? '75' : '60'}%`; }
-    else if (s.deload && L) { min = round5(L.min * .7); note = '減量週：長跑縮短約 30%'; }
-    else if (easyDay && L) { min = L.min; note = '狀態普通：長跑維持上次的長度，不加長'; }
+    else if (s.deload && L) { min = round5(L.min * .7); note = '減量週：長跑縮短約 30%（下週再回到近 30 天最長的長度往上加）'; }
+    else if (easyDay && L) { min = L.min; note = '狀態普通：長跑維持近 30 天最長的長度，不加長'; }
     const item = { type: 'long_run', min, rpe: 1 };
-    if (L && L.km) item.km = Math.min(32, Math.round(L.km * min / L.min));
+    if (L && L.km) item.km = Math.min(32, Math.round(L.km * min / L.min * 10) / 10);
     items.push(item);
     why.push(note);
     why.push('長跑大約 32–35 km 以上效益遞減、受傷風險增加，不用再拉長');
@@ -482,14 +487,14 @@ function recommendHybrid(target, s, flexItem, r) {
   }
   const liftRpe = s.hard || lighter ? 2 : 3;
   if (lift === 'push') {
-    items.unshift({ type: 'push', min: 65, rpe: liftRpe });
+    items.unshift({ type: 'push', min: 75, rpe: liftRpe });
     why.push(`大胸肌、寬肩：胸和肩每週練 2 次、每部位 10–20 組（近 7 天 ${cnt('push')} 次）`);
     why.push('上胸用 30° 上斜；肩膀寬度主要靠側三角肌，側平舉要做足量');
   } else if (lift === 'lower') {
-    items.unshift({ type: 'lower', min: 50, rpe: liftRpe });
+    items.unshift({ type: 'lower', min: 55, rpe: liftRpe });
     why.push('腿部大重量（約 80% 1RM 以上）能改善跑步經濟性；已避開長跑和強度課的前後一天');
   } else if (lift === 'pull') {
-    items.unshift({ type: 'pull', min: 55, rpe: liftRpe });
+    items.unshift({ type: 'pull', min: 65, rpe: liftRpe });
     why.push(`背和後三角讓肩膀看起來更寬，也平衡胸推的姿勢（近 7 天 ${cnt('pull')} 次）`);
   }
 
@@ -518,7 +523,7 @@ function recommendHybrid(target, s, flexItem, r) {
 
   // 3. 腹肌：每週 3 次、間隔 48 小時，要負重漸進
   if (cnt('core') < W.core && free(['core']) && since('core', 2)) {
-    items.push({ type: 'core', min: 15, rpe: 2 });
+    items.push({ type: 'core', min: 20, rpe: 2 });
     why.push(`冰塊腹肌：腹肌每週 3 次、要負重漸進（近 7 天 ${cnt('core')} 次）；但要看得到，體脂約需 10–12%，飲食更關鍵`);
   }
   // 仰臥起坐目標：排在腹肌日（每週 3 次），每 2 週測一次 1 分鐘最多次數
@@ -527,7 +532,7 @@ function recommendHybrid(target, s, flexItem, r) {
     const sg = testGoal('situp');
     const su = dueOf('situp');
     coreItem.ex = [...situpEx(su.M, su.due), ...exFor('core')];
-    coreItem.min = 20;
+    coreItem.min = 25;
     why.push(su.M == null ? `仰臥起坐 1 分鐘 ${sg} 下：先測一次 1 分鐘最多幾下，課表才能依程度安排`
       : su.M >= sg ? `仰臥起坐已達 1 分鐘 ${sg} 下目標，維持即可`
       : `仰臥起坐 1 分鐘 ${sg} 下：目前 ${su.M} 下，還差 ${sg - su.M} 下；腹肌日先做 3 組、每組約最大次數 65%`);
@@ -589,12 +594,12 @@ function recommendGeneral(s, g, fav, flexItem, r) {
     let type;
     if (bigReady.length === 2 && data.goal !== 'muscle' && (gDays('upper') || 9) >= 3 && (gDays('lower') || 9) >= 3) type = 'full';
     else type = bigReady.sort((a, b) => (gDays(b) || 99) - (gDays(a) || 99))[0];
-    items.push({ type, min: data.goal === 'muscle' ? 45 : 35, rpe: intensity });
+    items.push({ type, min: data.goal === 'muscle' ? 55 : 50, rpe: intensity });
     why.push(`近 7 天肌力訓練 ${s.strength} 次，目標每週 ${g.strength} 次`);
     const p = type === 'full' ? '上半身與腿' : GROUP_NAME[type];
     const d = type === 'full' ? Math.min(gDays('upper') || 99, gDays('lower') || 99) : gDays(type);
     why.push(d && d < 99 ? `${p}已休息 ${d} 天，可以再練` : `最近 4 週沒練過${p}`);
-    if (type !== 'full' && ready.includes('core')) items.push({ type: 'core', min: 10, rpe: 2 });
+    if (type !== 'full' && ready.includes('core')) items.push({ type: 'core', min: 20, rpe: 2 });
     if (cardioGap > .3) items.push({ type: fav(['walk', 'bike', 'easy_run']), min: 15, rpe: 1 });
   } else if (main === 'cardio') {
     const lowerOk = ready.includes('lower');
@@ -609,7 +614,7 @@ function recommendGeneral(s, g, fav, flexItem, r) {
     why.push(`近 7 天有氧約 ${Math.round(s.cardio)} 分鐘（中等強度換算），目標每週 ${g.cardio} 分鐘`);
     if (!lowerOk) why.push('腿還在恢復，選對腳負擔小的項目');
     if (strengthGap > 0 && !bigReady.length) why.push('肌力部位都還在恢復，今天先做有氧');
-    if (ready.includes('core') && strengthGap > 0) items.push({ type: 'core', min: 10, rpe: 2 });
+    if (ready.includes('core') && strengthGap > 0) items.push({ type: 'core', min: 20, rpe: 2 });
   } else {
     why.push('本週的有氧和肌力目標都達成了，做點喜歡的輕鬆運動就好');
     items.push({ type: fav(['walk', 'bike', 'swim', 'ball']), min: 30, rpe: 1 });
