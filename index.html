@@ -53,6 +53,17 @@
         <span class="unit">下／分<span class="opt"> · 選填</span></span></div>
     </div>
 
+    <div class="card" id="bodyCard">
+      <div class="card-title">體重・腰圍 <small class="sub">選填</small></div>
+      <div class="kv"><span class="k">體重</span>
+        <span class="stp" id="weightStp"><button data-a="-" aria-label="減少">−</button><b id="weightVal">未填</b><button data-a="+" aria-label="增加">＋</button></span>
+        <span class="unit">kg</span></div>
+      <div class="kv"><span class="k">腰圍</span>
+        <span class="stp" id="waistStp"><button data-a="-" aria-label="減少">−</button><b id="waistVal">未填</b><button data-a="+" aria-label="增加">＋</button></span>
+        <span class="unit">cm</span></div>
+      <div class="hint" id="bodyHint"></div>
+    </div>
+
     <div class="card">
       <div class="card-title" id="sessTitle">今天做了什麼</div>
       <div id="sessions"></div>
@@ -119,6 +130,19 @@
       <div class="card-title">每天運動時間（分鐘）</div>
       <div id="chart"></div>
       <div class="legend" id="chartLegend"></div>
+    </div>
+    <div class="card" id="reviewCard">
+      <div class="card-title rv-head">每週回顧
+        <span class="rv-nav"><button class="icon-btn sm" id="rvPrev" aria-label="前一週"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <span id="rvLabel"></span>
+        <button class="icon-btn sm" id="rvNext" aria-label="後一週"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></span></div>
+      <div id="rvBody"></div>
+    </div>
+    <div class="card chart">
+      <div class="card-title">進步圖 <small class="sub">近 90 天</small></div>
+      <div class="chips sm" id="progSeg"></div>
+      <div id="progChart"></div>
+      <div class="hint" id="progHint"></div>
     </div>
     <div class="card">
       <div class="card-title">本週進度（近 7 天）</div>
@@ -256,9 +280,12 @@
         <li>每週約 <b>3 次</b>，間隔 48 小時</li>
         <li>要「看得到」主要看體脂：男性約 <b>10–12%</b> 才會清楚，飲食比練腹更關鍵</li>
         <li>減脂時蛋白質每天約 <b>1.6 g／公斤體重</b>以上，保住胸肩的肌肉；熱量小幅赤字即可，太大會影響跑步與恢復</li>
+        <li>蛋白質分 <b>4 餐</b>、每餐約 0.4 g／公斤；在「今天」頁填體重會自動算出每天的目標</li>
+        <li>看進度用<b>腰圍＋體重</b>一起看：體重沒降但腰圍變小，通常是脂肪減少、肌肉增加</li>
       </ul>
       <div class="src">來源：
         <a href="https://pubmed.ncbi.nlm.nih.gov/28698222/">Morton 2018 蛋白質統合分析</a>、
+        <a href="https://pubmed.ncbi.nlm.nih.gov/29497353/">Schoenfeld & Aragon 2018 每餐蛋白質</a>、
         <a href="https://inbodyusa.com/blogs/inbodyblog/what-body-fat-percentage-do-you-need-to-see-abs/">看見腹肌的體脂</a>、
         <a href="https://pubmed.ncbi.nlm.nih.gov/16558218/">腹肌動作肌電圖研究</a></div>
     </details>
@@ -269,13 +296,18 @@
         <li><b>80/20 原則</b>：約 80% 跑量是輕鬆配速（能講完整句子），20% 是節奏跑或間歇</li>
         <li>跑量主要靠<b>增加輕鬆跑</b>來累積</li>
         <li><b>每週一次長跑</b>（排在週末），以<b>近 30 天最長的一次跑步</b>為基準，每次最多多約 8%：單次比近 30 天最長多 10% 以上，過度使用傷害風險約增加 1.6 倍（每週總跑量增加多少反而看不出關係）；超過 32–35 km 效益遞減</li>
-        <li>比賽前 <b>2–3 週減量</b>：跑量減少約 25% 以上，維持一點強度</li>
+        <li>比賽前 <b>2–3 週減量</b>：跑量逐步減少約 <b>40–60%</b>，強度與跑步頻率不變（只降強度沒有幫助）；App 會自動把長跑縮到最長一次的 60–75%、重訓組數減半</li>
+        <li><b>配速</b>：在「設定」填目標完賽時間後自動算出：輕鬆跑比馬拉松配速慢 15–25%、長跑慢 10–20%、節奏跑約 15K～半馬配速、4×4 間歇約 5K 配速（用 Riegel 公式從目標時間換算）</li>
       </ul>
       <div class="src">來源：
         <a href="https://runnersconnect.net/sub-3-marathon-training/">11.9 萬名跑者訓練資料分析</a>、
         <a href="https://www.trainingpeaks.com/blog/marathon-training-plan/">TrainingPeaks 馬拉松課表</a>、
         <a href="https://www.asics.com/it/en-it/running-advice/why-tapering-is-important-before-race-day/">ASICS 賽前減量</a>、
-        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12421110">Frandsen 2025 單次跑步距離與受傷（5,205 名跑者）</a></div>
+        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12421110">Frandsen 2025 單次跑步距離與受傷（5,205 名跑者）</a>、
+        <a href="https://pubmed.ncbi.nlm.nih.gov/17762369/">Bosquet 2007 減量統合分析</a>、
+        <a href="https://pubmed.ncbi.nlm.nih.gov/37163550/">2023 耐力運動減量統合分析</a>、
+        <a href="https://runningwithrock.com/pfitz-marathon-training-explained/">Pfitzinger 各課表配速</a>、
+        <a href="https://en.wikipedia.org/wiki/Peter_Riegel">Riegel 成績換算公式</a></div>
     </details>
 
     <details class="card g">
@@ -317,6 +349,18 @@
         <button class="text-btn" id="raceClear" hidden>清除</button>
       </div>
       <div class="hint" id="raceHint"></div>
+    </div>
+
+    <div class="list-title">馬拉松目標完賽時間</div>
+    <div class="list pad">
+      <div class="ex-row">
+        <input class="field ex-input goal-t" id="goalH" type="number" inputmode="numeric" min="2" max="8" placeholder="4" aria-label="小時">
+        <span class="ex-unit">小時</span>
+        <input class="field ex-input goal-t" id="goalM" type="number" inputmode="numeric" min="0" max="59" placeholder="00" aria-label="分">
+        <span class="ex-unit">分</span>
+        <button class="text-btn" id="goalClear" hidden>清除</button>
+      </div>
+      <div class="hint" id="paceHint"></div>
     </div>
 
     <div class="list-title">引體向上目標</div>

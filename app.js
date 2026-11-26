@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.6.3';
+const VERSION = '1.7';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -96,7 +96,7 @@ const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
-const blank = () => ({ entries: {}, goal: 'hybrid', days: 6, pullGoal: 20, pullOn: true, situpGoal: 50, situpOn: true, raceDate: '', ver: 2 });
+const blank = () => ({ entries: {}, goal: 'hybrid', days: 6, pullGoal: 20, pullOn: true, situpGoal: 50, situpOn: true, raceDate: '', raceGoal: 0, ver: 2 });
 
 function load() {
   try {
@@ -104,7 +104,7 @@ function load() {
     if (d && typeof d.entries === 'object') {
       Object.values(d.entries).forEach((e) => { if (e && e.sore) e.sore = normParts(e.sore); });
       const o = { entries: d.entries, goal: GOALS[d.goal] ? d.goal : 'hybrid', days: d.days >= 2 && d.days <= 7 ? d.days : 6, pullGoal: d.pullGoal >= 1 && d.pullGoal <= 100 ? d.pullGoal : 20, pullOn: d.pullOn !== false,
-        situpGoal: d.situpGoal >= 1 && d.situpGoal <= 150 ? d.situpGoal : 50, situpOn: d.situpOn !== false, raceDate: /^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '') ? d.raceDate : '', ver: 2 };
+        situpGoal: d.situpGoal >= 1 && d.situpGoal <= 150 ? d.situpGoal : 50, situpOn: d.situpOn !== false, raceGoal: d.raceGoal >= 120 && d.raceGoal <= 480 ? Math.round(d.raceGoal) : 0, raceDate: /^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '') ? d.raceDate : '', ver: 2 };
       // v1.0 的預設是「健康、每週 4 天」；使用者主要做健身＋跑馬拉松，沒改過預設的就換成新目標
       if (!d.ver && d.goal === 'health' && d.days === 4) { o.goal = 'hybrid'; o.days = 6; }
       return o;
@@ -135,6 +135,8 @@ function cleanEntry(e) {
   if (e.feel >= 1 && e.feel <= 5) o.feel = Math.round(e.feel);
   if (e.pullMax >= 0 && e.pullMax <= 100) o.pullMax = Math.round(e.pullMax);
   if (e.situpMax >= 0 && e.situpMax <= 150) o.situpMax = Math.round(e.situpMax);
+  if (e.weight >= 30 && e.weight <= 250) o.weight = Math.round(e.weight * 10) / 10;
+  if (e.waist >= 40 && e.waist <= 200) o.waist = Math.round(e.waist * 10) / 10;
   if (e.sleep >= 0 && e.sleep <= 14) o.sleep = Math.round(e.sleep);
   if (e.rhr >= 30 && e.rhr <= 120) o.rhr = Math.round(e.rhr);
   return o;
@@ -362,7 +364,7 @@ function recommend(target) {
     return { kind: 'recover', badge: '🌿', title: '輕鬆恢復日', reasons: why, tag: r.lv === 2 ? '狀態偏低' : '',
       items: [{ type: lowerSore ? 'walk' : fav(['walk', 'bike', 'swim']), min: 20, rpe: 1 }, flexItem(15)] };
   }
-  return data.goal === 'hybrid' ? recommendHybrid(target, s, flexItem, r) : recommendGeneral(s, g, fav, flexItem, r);
+  return data.goal === 'hybrid' ? recommendHybrid(target, s, flexItem, r) : addGoalTests(recommendGeneral(s, g, fav, flexItem, r), target, r);
 }
 
 /* ----- 次數目標：引體向上、仰臥起坐（可在設定頁決定是否列入目標） ----- */
@@ -405,6 +407,53 @@ function pullupEx(M, test, onPullDay) {
     else L.push(X('引體向上', 5, String(Math.round(M * .7)), '90 秒', false));
   } else L.push(X('負重引體向上', 4, '5', '2–3 分'));
   return L;
+}
+
+// 其他目標（健康、增肌等）：上半身／全身日先練引體向上、腹肌日先練仰臥起坐（有列入目標時）；狀態普通以下不測驗
+function addGoalTests(p, target, r) {
+  if (p.kind !== 'train') return p;
+  const st = (t) => { const x = lastTest(t, target); return { M: x ? x.v : null, due: (!x || Math.round((parseKey(target) - parseKey(x.k)) / 864e5) >= 14) && r.lv === 0 }; };
+  p.items.forEach((i) => {
+    if (['upper', 'full', 'pull'].includes(i.type) && testOn('pull')) {
+      const d = st('pull'); const goal = testGoal('pull');
+      i.ex = [...pullupEx(d.M, d.due, true), ...(i.ex || exFor(i.type))];
+      i.min += 10;
+      p.reasons.push(d.M == null ? `引體向上 ${goal} 下：先測一次最大次數，課表才能依程度安排`
+        : d.M >= goal ? `引體向上已達 ${goal} 下目標，維持即可` : `引體向上 ${goal} 下：目前 ${d.M} 下，上半身日先練引體向上`);
+    }
+    if (i.type === 'core' && testOn('situp')) {
+      const d = st('situp'); const goal = testGoal('situp');
+      i.ex = [...situpEx(d.M, d.due), ...(i.ex || exFor('core'))];
+      i.min += 5;
+      p.reasons.push(d.M == null ? `仰臥起坐 1 分鐘 ${goal} 下：先測一次 1 分鐘最多幾下`
+        : d.M >= goal ? `仰臥起坐已達 1 分鐘 ${goal} 下目標，維持即可` : `仰臥起坐 1 分鐘 ${goal} 下：目前 ${d.M} 下，腹肌日先做 3 組、每組約最大次數 65%`);
+    }
+  });
+  return p;
+}
+
+/* ----- 馬拉松目標配速 ----- */
+// 依目標完賽時間推算：輕鬆跑比馬拉松配速慢 15–25%、長跑慢 10–20%（Pfitzinger）；
+// 節奏跑＝15K～半馬配速、4×4 間歇＝5K 配速，用 Riegel 公式 T2 = T1 ×（D2／D1）^1.06 從目標時間換算
+const fmtPace = (p) => { const s = Math.round(p * 60); return `${Math.floor(s / 60)}'${pad(s % 60)}"`; };
+function paces() {
+  if (!data.raceGoal) return null;
+  const mp = data.raceGoal / 42.195;
+  const rp = (d) => data.raceGoal * Math.pow(d / 42.195, 1.06) / d;
+  return { mp, easy: [mp * 1.15, mp * 1.25], long: [mp * 1.1, mp * 1.2], tempo: [rp(15), rp(21.0975)], vo2: rp(5) };
+}
+const paceRange = (a) => `${fmtPace(a[0])}–${fmtPace(a[1])}/km`;
+function paceLine(i) {
+  const P = paces();
+  if (!P || !TYPE[i.type].run) return '';
+  if (i.type === 'long_run') return `配速約 ${paceRange(P.long)}；最後 15 分鐘可加到馬拉松配速 ${fmtPace(P.mp)}/km`;
+  if (i.type === 'tempo') {
+    const d = (i.det || DETAIL.tempo).join(' ');
+    if (/馬拉松配速/.test(d)) return `馬拉松配速 ${fmtPace(P.mp)}/km`;
+    if (/4 × 4/.test(d)) return `快跑約 ${fmtPace(P.vo2)}/km（約 5K 比賽配速）`;
+    return `節奏跑約 ${paceRange(P.tempo)}（約 15K～半馬配速）`;
+  }
+  return `配速約 ${paceRange(P.easy)}（比馬拉松配速慢 15–25%）`;
 }
 
 /* ----- 健身＋馬拉松 ----- */
@@ -640,6 +689,8 @@ function planItemsHtml(p, full) {
     if (full) {
       const ex = t.cat === 'strength' ? (i.ex || exFor(i.type)) : null;
       const det = ex ? [] : [...(i.det || DETAIL[i.type] || [])];
+      const pl = ex ? '' : paceLine(i);
+      if (pl) det.unshift(pl);
       if (i.km) det.unshift(`目標約 ${i.km} km`);
       body = (i.note ? `<div class="pnote">${esc(i.note)}</div>` : '') + (ex && ex.length ? exTable(ex) : '')
         + (det.length ? `<ul class="det">${det.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>` : '');
@@ -664,7 +715,7 @@ function ensureEntry() {
 // 這天沒有任何內容時刪掉，避免留下空紀錄
 function tidy(k) {
   const e = data.entries[k];
-  if (e && !e.sessions.length && !e.feel && !(e.sore && e.sore.length) && e.pullMax == null && e.situpMax == null && e.sleep == null && !e.rhr) delete data.entries[k];
+  if (e && !e.sessions.length && !e.feel && !(e.sore && e.sore.length) && e.pullMax == null && e.situpMax == null && e.weight == null && e.waist == null && e.sleep == null && !e.rhr) delete data.entries[k];
 }
 function touch() {
   const e = data.entries[curDate];
@@ -692,6 +743,12 @@ function renderToday() {
   $$('#sore .chip').forEach((b) => b.classList.toggle('on', sore.has(b.dataset.p)));
   $$('#sleep .chip').forEach((b) => b.classList.toggle('on', !!e && e.sleep === +b.dataset.h));
   $('#rhrVal').textContent = e && e.rhr ? e.rhr : '未填';
+  $('#weightVal').textContent = e && e.weight != null ? e.weight : '未填';
+  $('#waistVal').textContent = e && e.waist != null ? e.waist : '未填';
+  // 蛋白質目標：1.6 g／公斤（Morton 2018），分 4 餐、每餐約 0.4 g／公斤（Schoenfeld & Aragon 2018）
+  const bw = e && e.weight != null ? e.weight : lastVal('weight', curDate);
+  $('#bodyHint').innerHTML = bw ? `蛋白質目標：每天約 <b>${Math.round(bw * 1.6)} g</b>（1.6 g／公斤 × ${bw} kg），分 4 餐、每餐約 ${Math.round(bw * .4)} g`
+    : '填體重後會算出每天的蛋白質目標（1.6 g／公斤）';
   // 準備度：今天的狀態會用來排明天
   const rs = recentStats(addDays(curDate, 1));
   const rv = readiness(rs);
@@ -759,7 +816,7 @@ function renderTestCard(t, e) {
 function numInput(el, val, lo, hi, dec, done) {
   const inp = document.createElement('input');
   inp.type = 'number'; inp.inputMode = dec ? 'decimal' : 'numeric'; inp.className = 'stp-in';
-  inp.min = lo; inp.max = hi; inp.step = dec ? '0.5' : '1'; inp.value = val == null ? '' : val;
+  inp.min = lo; inp.max = hi; inp.step = dec ? 'any' : '1'; inp.value = val == null ? '' : val;
   el.replaceChildren(inp);
   inp.focus(); inp.select();
   let fin = false;
@@ -771,18 +828,18 @@ function numInput(el, val, lo, hi, dec, done) {
   inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') commit(true); else if (e.key === 'Escape') commit(false); });
   inp.addEventListener('blur', () => commit(true));
 }
-function stepper(sel, get, set, start, lo, hi) {
+function stepper(sel, get, set, start, lo, hi, step = 1) {
   $(sel).addEventListener('click', (ev) => {
     if (ev.target.closest('input')) return;
     if (ev.target.closest('b')) {
-      numInput(ev.target.closest('b'), get(), lo, hi, false, (v) => { if (v !== undefined) set(v); touch(); });
+      numInput(ev.target.closest('b'), get(), lo, hi, step < 1, (v) => { if (v !== undefined) set(v); touch(); });
       return;
     }
     const b = ev.target.closest('button');
     if (!b) return;
     const cur = get();
     if (b.dataset.a === 'x') set(null);
-    else set(cur == null ? start() : Math.min(hi, Math.max(lo, cur + (b.dataset.a === '+' ? 1 : -1))));
+    else set(cur == null ? start() : Math.min(hi, Math.max(lo, Math.round((cur + (b.dataset.a === '+' ? step : -step)) * 10) / 10)));
     touch();
   });
 }
@@ -814,6 +871,12 @@ stepper('#rhrStp', () => { const e = data.entries[curDate]; return e && e.rhr ? 
   const e = ensureEntry();
   if (v == null) delete e.rhr; else e.rhr = v;
 }, () => { const k = Object.keys(data.entries).filter((x) => x < curDate && data.entries[x].rhr).sort().pop(); return k ? data.entries[k].rhr : 60; }, 30, 120);
+// 體重、腰圍：從上一次的數值開始；體重每次 ±0.1 kg、腰圍 ±0.5 cm（點數字可直接輸入）
+const lastVal = (key, before) => { const k = Object.keys(data.entries).filter((x) => x < before && data.entries[x][key] != null).sort().pop(); return k ? data.entries[k][key] : null; };
+[['weight', 70, 30, 250, .1], ['waist', 80, 40, 200, .5]].forEach(([key, d0, lo, hi, st]) => stepper(`#${key}Stp`,
+  () => { const e = data.entries[curDate]; return e && e[key] != null ? e[key] : null; },
+  (v) => { const e = ensureEntry(); if (v == null) delete e[key]; else e[key] = v; },
+  () => { const v = lastVal(key, curDate); return v != null ? v : d0; }, lo, hi, st));
 $('#sore').addEventListener('click', (ev) => {
   const b = ev.target.closest('.chip');
   if (!b) return;
@@ -1125,7 +1188,134 @@ function renderStats() {
   $('#typeStats').innerHTML = list.length ? list.map(([id, v]) => `<div class="type-row">
     <span>${TYPE[id].emoji}</span><span class="name">${TYPE[id].name}</span>
     <span class="meta">${v.n} 次 · ${v.min} 分</span></div>`).join('') : '<div class="empty">這段期間還沒有紀錄</div>';
+  renderReview();
+  renderProgress();
 }
+
+/* ----- 進步圖：主要動作每天最重的一組、引體向上測驗、體重、腰圍（近 90 天） ----- */
+const PROG = ['臥推', '坐姿啞鈴肩推', '側平舉', '深蹲', '引體向上', '體重', '腰圍'];
+let prog = '臥推';
+function series(n) {
+  const out = [];
+  for (let i = 89; i >= 0; i--) {
+    const k = addDays(todayKey(), -i);
+    const e = data.entries[k];
+    if (!e) continue;
+    if (n === '引體向上') { if (e.pullMax != null) out.push({ k, v: e.pullMax, l: `${e.pullMax} 下`, u: '下' }); continue; }
+    if (n === '體重' || n === '腰圍') {
+      const key = n === '體重' ? 'weight' : 'waist'; const u = n === '體重' ? 'kg' : 'cm';
+      if (e[key] != null) out.push({ k, v: e[key], l: `${e[key]} ${u}`, u });
+      continue;
+    }
+    let b = null;
+    (e.sessions || []).forEach((s) => (s.ex || []).forEach((o) => {
+      if (o.n === n && o.done > 0 && (!b || o.w > b.w || (o.w === b.w && o.r > b.r))) b = o;
+    }));
+    if (b) out.push(b.w ? { k, v: b.w, l: `${b.w} kg × ${b.r}`, u: 'kg' } : { k, v: b.r, l: `${b.r} 下`, u: '下' });
+  }
+  return out;
+}
+function lineChart(pts) {
+  const W = 340, H = 140, L = 34, R = 12, top = 12, B = 20;
+  const start = addDays(todayKey(), -89);
+  const t0 = parseKey(start).getTime(), span = parseKey(todayKey()).getTime() - t0;
+  const vs = pts.map((p) => p.v);
+  let lo = Math.min(...vs), hi = Math.max(...vs);
+  if (hi - lo < 1) { lo -= 1; hi += 1; }
+  const m = (hi - lo) * .15;
+  const y = (v) => top + (H - top - B) * (1 - (v - lo + m) / (hi - lo + 2 * m));
+  const x = (k) => L + (W - L - R) * (parseKey(k).getTime() - t0) / span;
+  const r1 = (v) => Math.round(v * 10) / 10;
+  let svg = '';
+  [hi, lo].forEach((v) => { svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 4}" y="${y(v) + 3}" text-anchor="end">${r1(v)}</text>`; });
+  svg += `<text class="axis" x="${L}" y="${H - 4}">${shortDate(start)}</text><text class="axis" x="${W - R}" y="${H - 4}" text-anchor="end">今天</text>`;
+  svg += `<polyline class="pline" points="${pts.map((p) => `${x(p.k).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ')}"/>`;
+  svg += pts.map((p) => `<circle class="pdot" cx="${x(p.k).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}">${svg}</svg>`;
+}
+function renderProgress() {
+  $('#progSeg').innerHTML = PROG.map((n) => `<button class="chip${n === prog ? ' on' : ''}" data-n="${n}">${n}</button>`).join('');
+  const pts = series(prog);
+  $('#progChart').innerHTML = pts.length ? lineChart(pts) : '';
+  if (!pts.length) { $('#progHint').textContent = `近 90 天還沒有「${prog}」的紀錄`; return; }
+  const a = pts[0], z = pts[pts.length - 1];
+  const d = Math.round((z.v - a.v) * 10) / 10;
+  $('#progHint').innerHTML = `最新 <b>${esc(z.l)}</b>（${shortDate(z.k)}）`
+    + (pts.length > 1 && a.u === z.u ? (d ? ` · 比 ${shortDate(a.k)} ${d > 0 ? '+' : ''}${d} ${z.u}` : ` · 和 ${shortDate(a.k)} 持平`) : '');
+}
+$('#progSeg').addEventListener('click', (ev) => { const b = ev.target.closest('.chip'); if (b) { prog = b.dataset.n; renderProgress(); } });
+
+/* ----- 每週回顧：週一到週日，和前一週比較 ----- */
+let wkOff = -1;   // 0 = 本週，-1 = 上週
+const weekStart = (k) => addDays(k, -((parseKey(k).getDay() + 6) % 7));
+function weekSum(start) {
+  const o = { days: 0, min: 0, lift: 0, sets: 0, runs: 0, runMin: 0, km: 0, longest: 0, sleep: [], weight: null };
+  for (let i = 0; i < 7; i++) {
+    const k = addDays(start, i);
+    if (k > todayKey()) break;
+    if (isTraining(k)) o.days++;
+    sessionsOf(k).forEach((s) => {
+      const t = TYPE[s.type];
+      o.min += s.min;
+      if (t.cat === 'strength') { o.lift++; (s.ex || []).forEach((x) => { o.sets += Math.min(x.done || 0, x.sets); }); }
+      if (t.run) { o.runs++; o.runMin += s.min; o.km += s.km || 0; o.longest = Math.max(o.longest, s.min); }
+    });
+    const e = data.entries[k];
+    if (e && e.sleep != null) o.sleep.push(e.sleep);
+    if (e && e.weight != null) o.weight = e.weight;
+  }
+  o.km = Math.round(o.km * 10) / 10;
+  return o;
+}
+// 這週打破的紀錄：重訓動作的最重重量、引體向上、仰臥起坐
+function weekPRs(start) {
+  const end = addDays(start, 6);
+  const best = {};
+  const prs = [];
+  Object.keys(data.entries).filter((k) => k <= end).sort().forEach((k) => {
+    const e = data.entries[k];
+    const inWeek = k >= start;
+    const chk = (name, v, unit) => {
+      if (best[name] != null && v > best[name] && inWeek) { const i = prs.findIndex((p) => p.n === name); if (i >= 0) prs.splice(i, 1); prs.push({ n: name, v, unit }); }
+      if (best[name] == null || v > best[name]) best[name] = v;
+    };
+    (e.sessions || []).forEach((s) => (s.ex || []).forEach((x) => { if (x.done > 0 && x.w > 0) chk(x.n, x.w, 'kg'); }));
+    if (e.pullMax != null) chk('引體向上', e.pullMax, '下');
+    if (e.situpMax != null) chk('仰臥起坐', e.situpMax, '下');
+  });
+  return prs;
+}
+function renderReview() {
+  const start = addDays(weekStart(todayKey()), wkOff * 7);
+  const a = weekSum(start), b = weekSum(addDays(start, -7));
+  const dl = (x, y, u = '') => { const d = Math.round((x - y) * 10) / 10; return d ? `<small class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}${u}</small>` : ''; };
+  const avg = (l) => (l.length ? Math.round(l.reduce((p, q) => p + q, 0) / l.length * 10) / 10 : null);
+  const row = (k, v, d = '') => `<div class="rv-row"><span class="k">${k}</span><span class="v">${v}${d}</span></div>`;
+  $('#rvLabel').textContent = `${wkOff === 0 ? '本週' : wkOff === -1 ? '上週' : `${-wkOff} 週前`} · ${shortDate(start)}–${shortDate(addDays(start, 6))}`;
+  $('#rvNext').disabled = wkOff >= 0;
+  let h = row('運動天數', `${a.days} 天`, dl(a.days, b.days))
+    + row('總時間', `${a.min} 分`, dl(a.min, b.min))
+    + row('重訓', `${a.lift} 次${a.sets ? ` · ${a.sets} 組` : ''}`, dl(a.sets, b.sets, ' 組'))
+    + row('跑步', `${a.runs} 次 · ${a.runMin} 分${a.km ? ` · ${a.km} km` : ''}${a.longest ? `（最長 ${a.longest} 分）` : ''}`, dl(a.runMin, b.runMin, ' 分'));
+  const sa = avg(a.sleep), sb = avg(b.sleep);
+  if (sa != null) h += row('平均睡眠', `${sa} 小時`, sb != null ? dl(sa, sb) : '');
+  if (a.weight != null) h += row('體重', `${a.weight} kg`, b.weight != null ? dl(a.weight, b.weight, ' kg') : '');
+  const prs = weekPRs(start);
+  if (prs.length) h += `<div class="rv-pr">🏆 新紀錄：${prs.map((p) => `${esc(p.n)} ${p.v} ${p.unit}`).join('、')}</div>`;
+  // 這週的提醒（看上週回顧時顯示）
+  if (wkOff === -1) {
+    const tips = [];
+    const s = recentStats(addDays(todayKey(), 1));
+    if (!a.days) tips.push('上週沒有運動紀錄，這週從輕鬆的開始');
+    if (s.deload) tips.push('這週是減量週：量減半、頻率不變，讓身體吸收前 3 週的訓練');
+    if (sa != null && sa < 7) tips.push(`上週平均只睡 ${sa} 小時，這週優先睡滿 7 小時以上`);
+    if (s.raceDays != null && s.raceDays > 0 && s.raceDays <= 28) tips.push(`距離比賽 ${s.raceDays} 天${s.raceDays <= 21 ? '，已進入賽前減量' : ''}`);
+    if (tips.length) h += `<ul class="rv-tips">${tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  }
+  $('#rvBody').innerHTML = h;
+}
+$('#rvPrev').addEventListener('click', () => { wkOff = Math.max(-12, wkOff - 1); renderReview(); });
+$('#rvNext').addEventListener('click', () => { wkOff = Math.min(0, wkOff + 1); renderReview(); });
 $('#rangeSeg').addEventListener('click', (ev) => {
   const b = ev.target.closest('button');
   if (!b) return;
@@ -1148,6 +1338,14 @@ function renderSettings() {
   const rd = data.raceDate ? Math.round((parseKey(data.raceDate) - parseKey(todayKey())) / 864e5) : null;
   $('#raceHint').textContent = rd == null ? '設定後，賽前 3 週會自動減量，賽後 1 週安排恢復'
     : rd > 0 ? `距離比賽還有 ${rd} 天${rd <= 21 ? '，已進入賽前減量' : ''}` : rd === 0 ? '今天比賽，加油！' : '比賽已結束；有下一場時再設定新日期';
+  if (document.activeElement !== $('#goalH') && document.activeElement !== $('#goalM')) {
+    $('#goalH').value = data.raceGoal ? Math.floor(data.raceGoal / 60) : '';
+    $('#goalM').value = data.raceGoal ? pad(data.raceGoal % 60) : '';
+  }
+  $('#goalClear').hidden = !data.raceGoal;
+  const P = paces();
+  $('#paceHint').innerHTML = P ? `馬拉松配速 <b>${fmtPace(P.mp)}/km</b><br>輕鬆跑 ${paceRange(P.easy)}<br>長跑 ${paceRange(P.long)}<br>節奏跑 ${paceRange(P.tempo)}<br>4×4 間歇 ${fmtPace(P.vo2)}/km`
+    : '設定後，明天建議的跑步會附上配速（例：4 小時 00 分）';
   $$('#goalSeg button').forEach((b) => b.classList.toggle('on', b.dataset.g === data.goal));
   $('#goalDesc').textContent = GOALS[data.goal].desc;
   $$('#daysSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.d === data.days));
@@ -1183,6 +1381,17 @@ Object.entries(TESTS).forEach(([t, T]) => {
     toast(data[T.on] ? `已列入目標：${T.name}` : `已取消${T.name}目標，課表不再安排專項`);
   });
 });
+function setRaceGoal() {
+  const h = $('#goalH').value, m = $('#goalM').value;
+  if (h === '' && m === '') { data.raceGoal = 0; persist(); renderSettings(); return; }
+  const t = Math.round(+h) * 60 + Math.round(+m || 0);
+  if (t >= 120 && t <= 480 && +m < 60) { data.raceGoal = t; persist(); toast(`目標完賽：${Math.floor(t / 60)} 小時 ${pad(t % 60)} 分`); }
+  else toast('請輸入 2–8 小時之間的時間');
+  renderSettings();
+}
+$('#goalH').addEventListener('change', setRaceGoal);
+$('#goalM').addEventListener('change', setRaceGoal);
+$('#goalClear').addEventListener('click', () => { data.raceGoal = 0; persist(); renderSettings(); toast('已清除目標完賽時間'); });
 $('#daysSeg').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) { data.days = +b.dataset.d; persist(); renderSettings(); } });
 
 /* ----- 備份 ----- */
@@ -1247,6 +1456,7 @@ $('#importFile').addEventListener('change', async (ev) => {
     if (d.situpGoal >= 1 && d.situpGoal <= 150) data.situpGoal = d.situpGoal;
     if (typeof d.pullOn === 'boolean') data.pullOn = d.pullOn;
     if (typeof d.situpOn === 'boolean') data.situpOn = d.situpOn;
+    if (d.raceGoal >= 120 && d.raceGoal <= 480) data.raceGoal = Math.round(d.raceGoal);
     if (/^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '')) data.raceDate = d.raceDate;
     persist();
     renderAll();
