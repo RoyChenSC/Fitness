@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.7';
+const VERSION = '1.7.1';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -82,7 +82,27 @@ const EX = {
 // 第一次做某個動作時的起始重量（kg，之後自動帶入上次）；0 = 徒手
 const W0 = { 臥推: 40, '上斜 30° 啞鈴臥推': 14, 坐姿啞鈴肩推: 12, 側平舉: 6, 繩索飛鳥: 10, 過頭繩索三頭伸展: 15, 滑輪下拉: 40, 單臂啞鈴划船: 20,
   臉拉: 15, 啞鈴彎舉: 10, 上斜啞鈴彎舉: 8, 深蹲: 50, 羅馬尼亞硬舉: 50, 保加利亞分腿蹲: 10, 站姿提踵: 40, 負重繩索捲腹: 30, 槓鈴划船: 40, 負重引體向上: 5 };
-const exFor = (type) => (EX[type] || []).map((o) => ({ ...o }));
+// 動作清單：預設動作庫＋使用者自訂（data.exMod[type] = { add: [新增的動作名稱], del: [移除的預設動作] }）
+const EX_NEW = (n) => X(n, 4, '8–12', '60–90 秒');
+const exFor = (type) => {
+  const m = (data.exMod && data.exMod[type]) || {};
+  const del = new Set(m.del || []);
+  return [...(EX[type] || []).filter((o) => !del.has(o.n)), ...(m.add || []).map(EX_NEW)].map((o) => ({ ...o }));
+};
+// 匯入／讀取時清理自訂清單
+function cleanExMod(x) {
+  const o = {};
+  if (!x || typeof x !== 'object') return o;
+  TYPES.filter((t) => t.cat === 'strength').forEach(({ id }) => {
+    const m = x[id];
+    if (!m || typeof m !== 'object') return;
+    const names = new Set((EX[id] || []).map((e) => e.n));
+    const add = [...new Set((Array.isArray(m.add) ? m.add : []).map((n) => String(n).trim().slice(0, 30)).filter((n) => n && !names.has(n)))].slice(0, 20);
+    const del = [...new Set((Array.isArray(m.del) ? m.del : []).filter((n) => names.has(n)))];
+    if (add.length || del.length) o[id] = { add, del };
+  });
+  return o;
+}
 // 有氧與伸展的說明文字
 const DETAIL = {
   easy_run: ['能講完整句子的配速（約最大心率 65–75%）', '寧可太慢，不要太快'],
@@ -96,7 +116,7 @@ const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
-const blank = () => ({ entries: {}, goal: 'hybrid', days: 6, pullGoal: 20, pullOn: true, situpGoal: 50, situpOn: true, raceDate: '', raceGoal: 0, ver: 2 });
+const blank = () => ({ entries: {}, goal: 'hybrid', days: 6, pullGoal: 20, pullOn: true, situpGoal: 50, situpOn: true, raceDate: '', raceGoal: 0, exMod: {}, ver: 2 });
 
 function load() {
   try {
@@ -104,7 +124,7 @@ function load() {
     if (d && typeof d.entries === 'object') {
       Object.values(d.entries).forEach((e) => { if (e && e.sore) e.sore = normParts(e.sore); });
       const o = { entries: d.entries, goal: GOALS[d.goal] ? d.goal : 'hybrid', days: d.days >= 2 && d.days <= 7 ? d.days : 6, pullGoal: d.pullGoal >= 1 && d.pullGoal <= 100 ? d.pullGoal : 20, pullOn: d.pullOn !== false,
-        situpGoal: d.situpGoal >= 1 && d.situpGoal <= 150 ? d.situpGoal : 50, situpOn: d.situpOn !== false, raceGoal: d.raceGoal >= 120 && d.raceGoal <= 480 ? Math.round(d.raceGoal) : 0, raceDate: /^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '') ? d.raceDate : '', ver: 2 };
+        situpGoal: d.situpGoal >= 1 && d.situpGoal <= 150 ? d.situpGoal : 50, situpOn: d.situpOn !== false, raceGoal: d.raceGoal >= 120 && d.raceGoal <= 480 ? Math.round(d.raceGoal) : 0, exMod: cleanExMod(d.exMod), raceDate: /^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '') ? d.raceDate : '', ver: 2 };
       // v1.0 的預設是「健康、每週 4 天」；使用者主要做健身＋跑馬拉松，沒改過預設的就換成新目標
       if (!d.ver && d.goal === 'health' && d.days === 4) { o.goal = 'hybrid'; o.days = 6; }
       return o;
@@ -555,7 +575,7 @@ function recommendHybrid(target, s, flexItem, r) {
   let pullupAdded = false;
   if (!testOn('pull')) { /* 引體向上未列入目標：背日照一般動作，不另排專項 */ }
   else if (pullItem) {
-    pullItem.ex = [...pullupEx(M, testDue, true), ...exFor('pull').slice(1)];
+    pullItem.ex = [...pullupEx(M, testDue, true), ...exFor('pull').filter((o) => o.n !== '滑輪下拉')];
     pullupAdded = true;
   } else if ((M == null || M < goal) && run !== 'long' && cnt('pullup') < W.pullup && free(['back']) && since('pullup', 2)) {
     items.push({ type: 'pullup', min: 15, rpe: lighter ? 2 : 3, ex: pullupEx(M, testDue, false) });
@@ -986,9 +1006,9 @@ function prepEx(setMin) {
 }
 function renderEx() {
   const ex = editing.ex || [];
-  $('#exBox').hidden = !ex.length;
+  $('#exBox').hidden = !editing.ex;
   $('#exList').innerHTML = ex.map((o, i) => `<div class="exr" data-i="${i}">
-    <div class="exr-top"><b>${esc(o.n)}</b>${o.up ? '<span class="up">⬆ 加重</span>' : ''}<span class="rt">${o.sets}×${esc(o.reps)} · ⏱ ${esc(o.rest)}</span></div>
+    <div class="exr-top"><b>${esc(o.n)}</b>${o.up ? '<span class="up">⬆ 加重</span>' : ''}<span class="rt">${o.sets}×${esc(o.reps)} · ⏱ ${esc(o.rest)}</span><button class="exr-del" data-del="1" aria-label="移除這個動作">×</button></div>
     <div class="exr-ctl">
       ${o.load ? `<span class="stp"><button data-a="w-">−</button><b data-k="w">${o.w ? o.w + ' kg' : '徒手'}</b><button data-a="w+">＋</button></span>` : ''}
       <span class="stp"><button data-a="r-">−</button><b data-k="r">${o.r} ${/秒/.test(o.reps) ? '秒' : '下'}</b><button data-a="r+">＋</button></span>
@@ -1002,6 +1022,40 @@ function renderSheet() {
   $('#rpeHint').textContent = RPE[editing.rpe - 1].hint;
   $('#kmRow').hidden = !TYPE[editing.type].run;
 }
+// 新增／移除動作：這次的清單馬上改，之後同一個項目的課表也會記住
+function exModOf(type) {
+  data.exMod = data.exMod || {};
+  return (data.exMod[type] = data.exMod[type] || { add: [], del: [] });
+}
+function tidyExMod(type) { const m = data.exMod[type]; if (m && !m.add.length && !m.del.length) delete data.exMod[type]; }
+function addEx(name) {
+  const n = String(name).trim().slice(0, 30);
+  if (!n) return;
+  const type = editing.type;
+  if (editing.ex.some((o) => o.n === n)) { toast('清單裡已經有這個動作'); return; }
+  editing.ex.push(fillEx([(EX[type] || []).find((o) => o.n === n) || EX_NEW(n)])[0]);
+  const m = exModOf(type);
+  if ((EX[type] || []).some((o) => o.n === n)) m.del = m.del.filter((x) => x !== n);
+  else if (!m.add.includes(n)) m.add.push(n);
+  tidyExMod(type);
+  persist();
+  renderEx();
+  toast(`已加入「${n}」，之後的課表都會有`);
+}
+function removeEx(i) {
+  const type = editing.type;
+  const n = editing.ex[i].n;
+  editing.ex.splice(i, 1);
+  const m = exModOf(type);
+  if (m.add.includes(n)) m.add = m.add.filter((x) => x !== n);
+  else if ((EX[type] || []).some((o) => o.n === n) && !m.del.includes(n)) m.del.push(n);
+  tidyExMod(type);
+  persist();
+  renderEx();
+  toast(`已移除「${n}」（設定頁可還原）`);
+}
+$('#exAdd').addEventListener('click', () => { addEx($('#exNew').value); $('#exNew').value = ''; });
+$('#exNew').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); addEx($('#exNew').value); $('#exNew').value = ''; } });
 const closeSheet = () => { $('#sheet').hidden = true; editing = null; };
 $('#typeGrid').addEventListener('click', (ev) => { const b = ev.target.closest('.type'); if (b && b.dataset.t !== editing.type) { editing.type = b.dataset.t; prepEx(true); renderSheet(); } });
 $('#exList').addEventListener('click', (ev) => {
@@ -1017,6 +1071,7 @@ $('#exList').addEventListener('click', (ev) => {
     });
     return;
   }
+  if (ev.target.closest('[data-del]')) { removeEx(+row.dataset.i); return; }
   const b = ev.target.closest('button');
   if (!b) return;
   const a = b.dataset.a;
@@ -1346,6 +1401,11 @@ function renderSettings() {
   const P = paces();
   $('#paceHint').innerHTML = P ? `馬拉松配速 <b>${fmtPace(P.mp)}/km</b><br>輕鬆跑 ${paceRange(P.easy)}<br>長跑 ${paceRange(P.long)}<br>節奏跑 ${paceRange(P.tempo)}<br>4×4 間歇 ${fmtPace(P.vo2)}/km`
     : '設定後，明天建議的跑步會附上配速（例：4 小時 00 分）';
+  const mods = Object.entries(data.exMod || {});
+  $('#exModList').innerHTML = mods.length ? mods.map(([t, m]) => `<div class="exmod-row"><div><b>${TYPE[t].emoji} ${TYPE[t].name}</b>
+      ${m.add.length ? `<div class="hint">新增：${m.add.map(esc).join('、')}</div>` : ''}${m.del.length ? `<div class="hint">移除：${m.del.map(esc).join('、')}</div>` : ''}</div>
+      <button class="text-btn" data-reset="${t}">還原預設</button></div>`).join('')
+    : '<div class="hint">在「新增運動」的動作清單裡按 × 移除、或在下方輸入名稱新增動作，之後同一個項目的課表都會記住</div>';
   $$('#goalSeg button').forEach((b) => b.classList.toggle('on', b.dataset.g === data.goal));
   $('#goalDesc').textContent = GOALS[data.goal].desc;
   $$('#daysSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.d === data.days));
@@ -1380,6 +1440,14 @@ Object.entries(TESTS).forEach(([t, T]) => {
     renderAll();
     toast(data[T.on] ? `已列入目標：${T.name}` : `已取消${T.name}目標，課表不再安排專項`);
   });
+});
+$('#exModList').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-reset]');
+  if (!b) return;
+  delete data.exMod[b.dataset.reset];
+  persist();
+  renderSettings();
+  toast(`已還原「${TYPE[b.dataset.reset].name}」的預設動作`);
 });
 function setRaceGoal() {
   const h = $('#goalH').value, m = $('#goalM').value;
@@ -1457,6 +1525,7 @@ $('#importFile').addEventListener('change', async (ev) => {
     if (typeof d.pullOn === 'boolean') data.pullOn = d.pullOn;
     if (typeof d.situpOn === 'boolean') data.situpOn = d.situpOn;
     if (d.raceGoal >= 120 && d.raceGoal <= 480) data.raceGoal = Math.round(d.raceGoal);
+    if (d.exMod && typeof d.exMod === 'object') data.exMod = cleanExMod(d.exMod);
     if (/^\d{4}-\d{2}-\d{2}$/.test(d.raceDate || '')) data.raceDate = d.raceDate;
     persist();
     renderAll();
