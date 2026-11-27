@@ -443,3 +443,8 @@ details.card.g[open] > summary { margin-bottom: 10px; }
 .exmod-row:last-child { border-bottom: 0; }
 .exmod-row .hint { margin-top: 2px; }
 .toast { white-space: normal; width: max-content; max-width: calc(100vw - 32px); text-align: center; border-radius: 18px; }
+
+/* ---------- v1.7.3：開發者名片（設定頁最下方） ---------- */
+.ver-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 8px; }
+.ver-row .note-text { margin: 0; }
+.dev-card { width: 56px; height: 56px; flex: none; border-radius: 14px; object-fit: contain; box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
