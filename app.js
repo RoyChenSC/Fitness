@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.7.1';
+const VERSION = '1.7.2';
 
 /* ================= 設定與資料 ================= */
 const STORAGE_KEY = 'workout-log-v1';
@@ -25,6 +25,7 @@ const TYPES = [
   { id: 'bike', name: '騎車', emoji: '🚴', cat: 'cardio', parts: ['lower'] },
   { id: 'swim', name: '游泳', emoji: '🏊', cat: 'cardio', parts: ['shoulder', 'back'] },
   { id: 'hiit', name: 'HIIT', emoji: '🔥', cat: 'cardio', parts: ['lower', 'core'] },
+  { id: 'jumprope', name: '跳繩', emoji: '🪢', cat: 'cardio', parts: ['lower'] },
   { id: 'hike', name: '登山', emoji: '⛰️', cat: 'cardio', parts: ['lower'] },
   { id: 'ball', name: '球類', emoji: '🏀', cat: 'cardio', parts: ['lower'] },
   { id: 'yoga', name: '瑜伽', emoji: '🧘', cat: 'flex', parts: [] },
